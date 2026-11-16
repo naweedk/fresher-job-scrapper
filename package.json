@@ -1,0 +1,29 @@
+{
+  "name": "fresher-jobs-india",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Fresher Jobs India – Job aggregation platform for entry-level positions in India",
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@nestjs/core",
+      "@prisma/client",
+      "@prisma/engines",
+      "prisma"
+    ]
+  },
+  "scripts": {
+    "dev": "concurrently -n web,api -c cyan,magenta \"pnpm dev:web\" \"pnpm dev:api\"",
+    "dev:web": "pnpm --filter web dev",
+    "dev:api": "pnpm --filter api dev",
+    "build": "pnpm --filter web build && pnpm --filter api build",
+    "lint": "pnpm --filter web lint && pnpm --filter api lint",
+    "db:up": "docker-compose up -d postgres",
+    "db:down": "docker-compose down",
+    "db:migrate": "pnpm --filter api prisma:migrate",
+    "db:generate": "pnpm --filter api prisma:generate",
+    "db:studio": "pnpm --filter api prisma:studio"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  }
+}
