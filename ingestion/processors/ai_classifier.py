@@ -3,6 +3,7 @@ AI Classifier integrating Google Gemini API with fallback, token tracking, and s
 """
 
 import logging
+import re
 import time
 from typing import Dict, Optional, Tuple
 from config import get_settings
@@ -22,7 +23,7 @@ class GeminiClassifier:
 
     def __init__(self, api_key: Optional[str] = None, model_name: Optional[str] = None):
         settings = get_settings()
-        self.api_key = api_key or settings.gemini_api_key
+        self.api_key = api_key if api_key is not None else settings.gemini_api_key
         self.model_name = model_name or settings.gemini_model
         self.prompt_version = PROMPT_VERSION
         self.usage = UsageMetadata(
@@ -34,7 +35,13 @@ class GeminiClassifier:
         if self.api_key:
             try:
                 from google import genai
-                self._client = genai.Client(api_key=self.api_key)
+                from google.genai import types
+
+                # Explicitly set api_version='v1beta' to support system_instruction / Developer instruction
+                self._client = genai.Client(
+                    api_key=self.api_key,
+                    http_options=types.HttpOptions(api_version="v1beta"),
+                )
             except Exception as e:
                 logger.error("Failed to initialize Google GenAI Client: %s", e)
 
@@ -69,7 +76,6 @@ class GeminiClassifier:
             temperature=0.1,
         )
 
-        backoff = 2.0
         for attempt in range(1, max_retries + 1):
             self.usage.requests_count += 1
             try:
@@ -108,10 +114,18 @@ class GeminiClassifier:
             except Exception as e:
                 err_str = str(e)
                 logger.warning("Gemini API call failed on attempt %d: %s", attempt, err_str)
-                # Rate limit handling: 429 ResourceExhausted
-                if "429" in err_str or "ResourceExhausted" in err_str:
-                    time.sleep(backoff)
-                    backoff *= 2
+
+                # Handle 429 Rate Limit / Quota Exceeded
+                if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str:
+                    # Extract suggested retry delay if provided in error message
+                    delay_match = re.search(r"retry in (\d+(?:\.\d+)?)s", err_str) or re.search(r"retryDelay': '(\d+)s'", err_str)
+                    if delay_match:
+                        wait_seconds = float(delay_match.group(1)) + 2.0
+                    else:
+                        wait_seconds = 15.0 * attempt
+
+                    logger.info("Rate limit exceeded. Backing off for %.1f seconds...", wait_seconds)
+                    time.sleep(wait_seconds)
                 else:
                     time.sleep(1.0)
 

@@ -155,8 +155,11 @@ class IngestionPipeline:
         pipeline_summary["elapsed_seconds"] = round(time.time() - start_time, 2)
         return pipeline_summary
 
-    def classify_pending(self, limit: int = 20) -> Dict:
-        """Classify jobs currently in PENDING status using Gemini."""
+    def classify_pending(self, limit: int = 20, pacing_delay: float = 4.0) -> Dict:
+        """
+        Classify jobs currently in PENDING status using Gemini.
+        Applies pacing_delay between requests to operate comfortably within Free Tier limits.
+        """
         summary = {"processed": 0, "success": 0, "failed": 0, "skipped": 0}
 
         if not self.classifier.is_available:
@@ -172,7 +175,7 @@ class IngestionPipeline:
             pending_jobs = job_repo.get_pending_classifications(limit=limit)
             logger.info("Found %d jobs awaiting AI classification", len(pending_jobs))
 
-            for job in pending_jobs:
+            for idx, job in enumerate(pending_jobs):
                 summary["processed"] += 1
                 job_id = job["job_id"]
                 result, err = self.classifier.classify_job(job)
@@ -192,7 +195,7 @@ class IngestionPipeline:
                         status=result.status.value,
                     )
                     summary["success"] += 1
-                    logger.info("Classified job '%s' -> %s (%s)", job["title"][:40], result.role, result.city)
+                    logger.info("Classified job [%d/%d] '%s' -> %s (%s)", idx + 1, len(pending_jobs), job["title"][:35], result.role, result.city)
                 else:
                     # Mark as FAILED so it can be retried or inspected
                     job_repo.update_classification(
@@ -209,6 +212,10 @@ class IngestionPipeline:
                         status=ClassificationStatusEnum.FAILED.value,
                     )
                     summary["failed"] += 1
-                    logger.warning("Classification failed for job '%s': %s", job["title"][:40], err)
+                    logger.warning("Classification failed for job [%d/%d] '%s': %s", idx + 1, len(pending_jobs), job["title"][:35], err)
+
+                # Pacing delay between requests to respect rate limits
+                if idx < len(pending_jobs) - 1:
+                    time.sleep(pacing_delay)
 
         return summary
