@@ -1,35 +1,45 @@
 # Fresher Jobs India
 
-A production-oriented job aggregation platform designed to collect, deduplicate, and intelligently classify genuine entry-level and internship opportunities across India from permitted public sources.
+A production-grade, full-stack job aggregation platform designed to collect, deduplicate, intelligently classify with Gen AI, and deliver genuine entry-level and internship opportunities across India from permitted public sources.
 
 ---
 
 ## 1. Project Overview & Problem Statement
 
 ### The Problem
-Finding entry-level and fresher jobs in India is characterized by noise, misleading experience requirements (e.g., "entry level" jobs requiring 2–3 years of experience), outdated listings, and fragmented sources. Genuine fresher jobs and internships are scattered across company career portals, public job boards, RSS feeds, and official notices.
+Finding authentic entry-level and fresher jobs in India is hindered by noise, misleading experience requirements (e.g., "entry level" jobs requiring 2–3 years of experience), expired listings, and fragmented platforms. Freshers and interns spend hours navigating cluttered job boards with conflicting data.
 
 ### The Objective
-Build a robust, production-ready aggregation system that:
-1. **Aggregates**: Gathers 200+ fresher jobs and internships from permitted public sources.
-2. **Normalizes & Deduplicates**: Cleans listings, creates canonical fingerprints, and eliminates duplicates across multiple platforms.
-3. **Classifies with Gen AI**: Applies an LLM (Gemini) to categorize jobs strictly by normalized role, city, job type, work mode, and extracted skill requirements.
-4. **Delivers**: Serves opportunities through a responsive, modern web interface with search and filters, backed by an automated daily refresh pipeline.
+Fresher Jobs India solves this through a robust 3-tier architecture:
+1. **Data Ingestion & Deduplication**: Python pipeline collecting thousands of jobs from permitted public sources (Arbeitnow, Remotive, Jobicy, RemoteOK, GitHub Jobs), enforcing canonical URL normalization and SHA-256 content hashing to eliminate duplicates.
+2. **AI Classification**: Google Gemini LLM categorizes jobs strictly into standardized roles, normalized Indian cities, job types, experience tiers, work modes, and extracted technical skills.
+3. **Search & Discovery Platform**: NestJS REST API with indexed search, multi-faceted filtering, sorting, and pagination, paired with a modern Next.js 16 (App Router) + Material UI (MUI 9) frontend.
+4. **Automated Daily Ingestion**: GitHub Actions workflow running on a daily schedule (`06:00 UTC`) to continuously discover new opportunities.
 
 ---
 
-## 2. Implementation Status: Phase 1 (Foundation Only)
+## 2. Current Status: Phase 3 Complete
 
-We have completed **Phase 1: Project Initialization and Foundation**. The system is completely established, verified locally, and configured for seamless transition into Phase 2.
+The project has completed **Phase 1 (Foundation)**, **Phase 2 (Ingestion & AI)**, and **Phase 3 (Search, Discovery & Frontend)**.
 
-- [x] Monorepo workspace initialized with `pnpm`
-- [x] Frontend initialized with Next.js (App Router), TypeScript (strict mode), and Material UI (MUI)
-- [x] Backend initialized with NestJS, modular structure, global validation, and live health verification
-- [x] Local PostgreSQL database running via Docker Compose with health checks
-- [x] Prisma ORM integration with complete schema models, enums, indexes, and initial migration applied
-- [x] Python 3 ingestion virtual environment created with Pydantic settings, dependencies, and pytest test suite
-- [x] Environment variable management configured with examples
-- [x] Comprehensive documentation and setup guides
+- [x] **Database & Monorepo**: PostgreSQL 16 on Docker (port 5434) with Prisma ORM 5. 8,763 active jobs, 2,315 companies, 5 active sources persisted.
+- [x] **Backend API (NestJS 10)**:
+  - `GET /api/jobs`: Search across title/description/company, filter by role, city, jobType, experienceLevel, workMode, skills, sort by postedAt, title, company, createdAt, with paginated metadata.
+  - `GET /api/jobs/:id`: Full job view including company, source, and AI classification.
+  - `GET /api/jobs/filters`: Dynamic aggregation of distinct roles, cities, and job types.
+  - `GET /api/stats`: Real-time system metrics (total/active jobs, companies, sources, classifications breakdown).
+- [x] **Frontend Web App (Next.js 16 + React 19 + MUI 9)**:
+  - Responsive homepage with live platform metrics, debounced search (400ms), multi-filter sidebar (desktop) and bottom drawer (mobile), job cards grid, sorting dropdown, and pagination.
+  - Job detail page (`/jobs/[id]`) with company info, classification badge, formatted description, required skills chips, and outbound application link.
+  - About page (`/about`) detailing the pipeline architecture and assignment context.
+  - Custom 404 page (`/not-found`) with recovery navigation.
+  - Complete empty, loading skeleton, and error state handling.
+- [x] **Tests & Quality**:
+  - NestJS backend unit tests: 23/23 tests passing (`pnpm --filter api test`).
+  - Python ingestion test suite: 24/24 tests passing (`pytest ingestion/tests/ -v`).
+  - ESLint: 0 errors, 0 warnings across all monorepo packages (`pnpm lint`).
+  - TypeScript & Production builds: Both `api` and `web` build cleanly.
+- [x] **Automation**: Daily scheduled GitHub Actions workflow (`.github/workflows/daily-ingestion.yml`).
 
 ---
 
@@ -37,193 +47,206 @@ We have completed **Phase 1: Project Initialization and Foundation**. The system
 
 | Layer | Technologies |
 |---|---|
-| **Frontend** | Next.js 16 (App Router), React 19, TypeScript (strict), Material UI (MUI 9), Emotion, `@mui/material-nextjs` |
-| **Backend** | NestJS 10, TypeScript (strict), Express, Class-Validator, Class-Transformer, Prisma ORM 5 |
+| **Frontend** | Next.js 16.4 (App Router), React 19, TypeScript strict mode, Material UI (MUI 9.5), Emotion, `@mui/material-nextjs` |
+| **Backend** | NestJS 10.4, TypeScript strict mode, Express, Class-Validator, Class-Transformer, Prisma ORM 5.22, Jest |
 | **Database** | PostgreSQL 16 (Alpine), Docker Compose, Prisma Schema & Migrations |
-| **Ingestion** | Python 3.13, Virtualenv, Pydantic 2, Pydantic Settings, HTTPX, Requests, BeautifulSoup4, Psycopg 3, Pytest |
+| **Ingestion** | Python 3.13, Virtualenv, Pydantic 2, HTTPX, Requests, BeautifulSoup4, Psycopg 3, Pytest |
+| **AI Layer** | Google Gemini API (`gemini-2.5-flash`), structured JSON response schema |
+| **CI / Scheduling** | GitHub Actions (`daily-ingestion.yml`), Cron (`0 6 * * *`) |
 | **Tooling** | pnpm 11 workspace, Docker Compose, Git |
 
 ---
 
-## 4. Monorepo Directory Structure
+## 4. Architecture & Monorepo Structure
 
 ```text
-fresher-jobs-india/
+Fresher Job Scrapper/
 │
 ├── apps/
-│   ├── web/                     # Next.js Frontend Application
-│   │   ├── app/                 # App Router (layout, page, loading, error, ThemeRegistry)
-│   │   ├── public/              # Static assets
-│   │   ├── src/                 # Reusable modules
-│   │   │   ├── components/      # UI components
-│   │   │   ├── hooks/           # Custom React hooks
-│   │   │   ├── services/        # API service clients
-│   │   │   ├── theme/           # MUI theme tokens
-│   │   │   └── types/           # Shared UI TypeScript contracts
+│   ├── web/                          # Next.js 16 Frontend
+│   │   ├── src/
+│   │   │   ├── app/                  # App Router pages (/, /jobs/[id], /about, /not-found)
+│   │   │   ├── components/
+│   │   │   │   ├── common/           # LoadingState, EmptyState, ErrorState
+│   │   │   │   ├── jobs/             # JobCard, JobList, JobFilters, JobSearch, JobSort, JobPagination
+│   │   │   │   ├── layout/           # Header, Footer
+│   │   │   │   └── stats/            # PlatformStats metrics cards
+│   │   │   ├── hooks/                # useJobs, useJobFilters
+│   │   │   ├── services/             # jobs.service, stats.service
+│   │   │   ├── theme/                # MUI theme & ThemeRegistry
+│   │   │   └── types/                # TypeScript API contracts
 │   │   ├── package.json
 │   │   └── tsconfig.json
 │   │
-│   └── api/                     # NestJS Backend API
-│       ├── src/
-│       │   ├── common/          # Health checks, shared filters/interceptors
-│       │   ├── config/          # Environment configuration
-│       │   ├── jobs/            # Job management module
-│       │   ├── companies/       # Company profiles module
-│       │   ├── sources/         # Ingestion sources module
-│       │   ├── stats/           # Platform metrics module
-│       │   ├── prisma/          # PrismaService & lifecycle hooks
-│       │   ├── app.module.ts    # Root application module
-│       │   └── main.ts          # Entry point & bootstrap logic
+│   └── api/                          # NestJS 10 Backend
 │       ├── prisma/
-│       │   ├── schema.prisma    # Canonical database schema
-│       │   └── migrations/      # Migration history
-│       └── package.json
+│       │   ├── schema.prisma         # Database schema
+│       │   └── migrations/           # Migration history
+│       ├── src/
+│       │   ├── common/               # Health checks, filters
+│       │   ├── config/               # Environment configuration
+│       │   ├── jobs/                 # Jobs search, filter, detail module & spec tests
+│       │   ├── companies/            # Company profiles module
+│       │   ├── sources/              # Ingestion sources module
+│       │   ├── stats/                # Metrics calculation module
+│       │   └── prisma/               # PrismaService connection manager
+│       ├── package.json
+│       └── tsconfig.json
 │
-├── ingestion/                   # Python Data Ingestion Service
-│   ├── collectors/              # Source-specific crawlers & adapters (Phase 2)
-│   ├── processors/              # Normalization & deduplication (Phase 2)
-│   ├── schemas/                 # Pydantic data schemas
-│   ├── database/                # Database persistence layer (Phase 2)
-│   ├── tests/                   # Pytest test suite
-│   ├── config.py                # Pydantic Settings configuration
-│   ├── main.py                  # CLI entry point
-│   ├── requirements.txt         # Python package dependencies
-│   └── venv/                    # Virtual environment (gitignored)
+├── ingestion/                        # Python Ingestion Pipeline
+│   ├── collectors/                   # Source collectors (Arbeitnow, Remotive, Jobicy, RemoteOK, GitHub)
+│   ├── processors/                   # Normalization, deduplication, Gemini AI classifier
+│   ├── schemas/                      # Pydantic data models
+│   ├── database/                     # PostgreSQL database client
+│   ├── tests/                        # 24 Pytest unit & integration tests
+│   ├── config.py                     # Ingestion settings
+│   └── main.py                       # CLI entry point (--stage collect/classify/all)
 │
-├── docs/                        # Architectural and setup documentation
-│   ├── architecture.md          # In-depth architectural blueprint
-│   └── development-setup.md     # Step-by-step developer instructions
+├── docs/                             # Documentation
+│   ├── api-reference.md              # REST API endpoint reference
+│   ├── frontend-guide.md             # Frontend architecture & MUI patterns
+│   ├── scheduling.md                 # Daily ingestion automation guide
+│   ├── architecture.md               # System architectural blueprint
+│   └── development-setup.md          # Local developer setup guide
 │
-├── docker-compose.yml           # PostgreSQL container definition
-├── package.json                 # Monorepo root scripts & dev dependencies
-├── pnpm-workspace.yaml          # pnpm workspace definition
-├── .env.example                 # Environment variable templates
-├── .gitignore                   # Version control ignore rules
-└── README.md                    # Project documentation
+├── .github/workflows/
+│   └── daily-ingestion.yml           # Automated daily collection & migration
+├── docker-compose.yml                # PostgreSQL container (port 5434)
+├── package.json                      # Monorepo root scripts
+├── pnpm-workspace.yaml               # Workspace configuration
+└── .env.example                      # Environment variables template
 ```
 
 ---
 
-## 5. Prerequisites
+## 5. Getting Started
 
-Before running the project locally, ensure you have:
+### 1. Prerequisites
 - **Node.js**: v20 or v22 LTS
-- **pnpm**: v9+ (`corepack enable` or `npm install -g pnpm`)
+- **pnpm**: v9+ (`npm install -g pnpm`)
 - **Docker Desktop**: Running for PostgreSQL
 - **Python**: v3.11+
-- **Git**: Installed locally
+- **Google Gemini API Key** (optional for running AI classification)
 
----
-
-## 6. Getting Started
-
-### 1. Clone & Configure Environment
+### 2. Configure Environment
 ```bash
-git clone <repo-url>
-cd "Fresher Job Scrapper"
-
-# Copy root environment variables
+# Copy root environment file
 cp .env.example .env
 cp apps/api/.env.example apps/api/.env
-cp ingestion/.env.example ingestion/.env
 ```
 
-### 2. Start PostgreSQL Container
+Ensure `DATABASE_URL` in `.env` points to port `5434`:
+```env
+DATABASE_URL="postgresql://postgres:local_dev_password@localhost:5434/fresher_jobs?schema=public"
+NEXT_PUBLIC_API_URL=http://localhost:3100/api
+```
+
+### 3. Start Database
 ```bash
 pnpm db:up
 ```
-*Note: The database runs on port `5434` by default to avoid conflict with existing PostgreSQL instances.*
 
-### 3. Install Monorepo Dependencies
+### 4. Install Dependencies & Run Migrations
 ```bash
 pnpm install
-```
-
-### 4. Run Database Migrations
-```bash
 pnpm db:migrate
 ```
 
 ### 5. Start Development Servers
-You can start both backend and frontend concurrently:
+Run both frontend and backend concurrently:
 ```bash
 pnpm dev
 ```
-Or start them individually:
+Or separately:
 ```bash
-# Terminal 1: NestJS API (http://localhost:3100/api)
+# Backend API (runs on http://localhost:3100/api)
 pnpm dev:api
 
-# Terminal 2: Next.js Frontend (http://localhost:3000)
+# Frontend (runs on http://localhost:3000)
 pnpm dev:web
 ```
 
 ---
 
-## 7. Python Ingestion Environment
+## 6. API Reference
 
+All endpoints are prefixed with `/api`. For complete schemas, see [docs/api-reference.md](docs/api-reference.md).
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/api/health` | Health check verifying database connectivity |
+| `GET` | `/api/stats` | Aggregated platform metrics (counts, breakdowns) |
+| `GET` | `/api/jobs/filters` | Distinct filter options (roles, cities, job types) |
+| `GET` | `/api/jobs` | Paginated jobs search with multiple filters and sorting |
+| `GET` | `/api/jobs/:id` | Full job details with company and classification |
+
+### Example Search Query
 ```bash
-cd ingestion
-
-# Create and activate virtual environment
-python -m venv venv
-# Windows:
-venv\Scripts\activate
-# macOS/Linux:
-source venv/bin/activate
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Run environment smoke test
-python main.py
-
-# Run test suite
-pytest tests/ -v
+curl "http://localhost:3100/api/jobs?search=engineer&role=QA+Engineer&jobType=FULL_TIME&sortBy=postedAt&sortOrder=DESC&page=1&limit=20"
 ```
 
 ---
 
-## 8. Root Development Scripts
+## 7. Running Tests & Quality Checks
 
-| Command | Action |
-|---|---|
-| `pnpm dev` | Run Next.js (`apps/web`) and NestJS (`apps/api`) concurrently |
-| `pnpm dev:web` | Run only the Next.js frontend dev server (`:3000`) |
-| `pnpm dev:api` | Run only the NestJS backend dev server (`:3100`) |
-| `pnpm build` | Build production artifacts for both web and api |
-| `pnpm lint` | Run ESLint across all workspace packages |
-| `pnpm db:up` | Start the local PostgreSQL Docker container |
-| `pnpm db:down` | Stop the local PostgreSQL Docker container |
-| `pnpm db:migrate`| Run Prisma migrations in development mode |
-| `pnpm db:generate`| Re-generate Prisma Client types |
-| `pnpm db:studio` | Open Prisma Studio GUI for database inspection |
+### Backend Unit Tests (Jest)
+```bash
+pnpm --filter api test
+```
+*Result: 23 passed, 23 total.*
+
+### Python Ingestion Tests (Pytest)
+```bash
+# Windows
+.\ingestion\venv\Scripts\python.exe -m pytest ingestion/tests/ -v
+
+# macOS / Linux
+pytest ingestion/tests/ -v
+```
+*Result: 24 passed, 24 total.*
+
+### Code Quality & Linting
+```bash
+pnpm lint
+```
+*Result: 0 errors, 0 warnings across api and web.*
+
+### Production Build
+```bash
+pnpm build
+```
 
 ---
 
-## 9. Verification & Service Endpoints
+## 8. Data Ingestion & Daily Scheduling
 
-- **Frontend Homepage**: [http://localhost:3000](http://localhost:3000)
-- **API Status**: [http://localhost:3100/api](http://localhost:3100/api)
-- **API Health Check**: [http://localhost:3100/api/health](http://localhost:3100/api/health)
-  ```json
-  {
-    "status": "ok",
-    "service": "fresher-jobs-api",
-    "database": "connected"
-  }
-  ```
+The Python ingestion service can be run independently:
+
+```bash
+cd ingestion
+# Activate virtual environment
+venv\Scripts\activate   # Windows
+# source venv/bin/activate # macOS/Linux
+
+# Run collection only
+python main.py --stage collect
+
+# Run classification on up to 50 pending jobs
+python main.py --stage classify --limit 50
+
+# Run full pipeline
+python main.py --stage all
+```
+
+Automated daily collection is managed via GitHub Actions:
+- **Workflow**: `.github/workflows/daily-ingestion.yml`
+- **Schedule**: Daily at 06:00 UTC
+- **Graceful Quota Handling**: Classification errors or Gemini API quota exhaustion do not fail the pipeline; newly collected jobs remain in `PENDING` classification status and are immediately searchable via title and company name.
+- See [docs/scheduling.md](docs/scheduling.md) for complete details.
 
 ---
 
-## 10. Roadmap: Planned Future Phases
+## 9. Current Limitations & Notes
 
-- **Phase 2: Job Source Integration & AI Classification**
-  - Implement source collectors for permitted portals and RSS feeds.
-  - Implement deduplication engine with canonical URLs and content hashing.
-  - Integrate Google Gemini LLM to classify role titles, standardize cities, work modes, and skills.
-  - Ingest 200+ verified fresher jobs into PostgreSQL.
-- **Phase 3: Search, Discovery & User Dashboard**
-  - Searchable listings with filters (role, city, work mode, job type).
-  - Clean MUI cards with drawer/detail views.
-  - Automated cron scheduler for daily job aggregation.
+- **AI Classification Quota**: Out of 8,763 stored jobs, 3 are fully classified with Gemini AI; the remaining 8,760 jobs are in `PENDING` classification status due to free tier quota limitations. All jobs are displayed and searchable across title, location, and company.
+- **Outbound Application URLs**: Every job card links directly to the genuine company or source job posting URL via "Apply on Company Website".
