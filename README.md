@@ -2,8 +2,6 @@
 
 A production-oriented job aggregation platform designed to collect, deduplicate, and intelligently classify genuine entry-level and internship opportunities across India from permitted public sources.
 
-> **Project Assessment Context**: Developed as a technical assessment for Beep's Gen AI & Engineering role.
-
 ---
 
 ## 1. Project Overview & Problem Statement
