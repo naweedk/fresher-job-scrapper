@@ -1,7 +1,18 @@
 """
-database package — PostgreSQL connection and persistence logic.
-
-Phase 2 implementation will add:
-- connection.py: psycopg3 connection pool using DATABASE_URL
-- repository.py: insert / upsert jobs, companies, ingestion logs
+Database package exports.
 """
+
+from database.connection import get_db_connection, check_db_health
+from database.source_repository import SourceRepository
+from database.company_repository import CompanyRepository
+from database.job_repository import JobRepository
+from database.ingestion_log_repository import IngestionLogRepository
+
+__all__ = [
+    "get_db_connection",
+    "check_db_health",
+    "SourceRepository",
+    "CompanyRepository",
+    "JobRepository",
+    "IngestionLogRepository",
+]
