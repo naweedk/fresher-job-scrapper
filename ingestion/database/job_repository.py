@@ -162,8 +162,8 @@ class JobRepository:
                 FROM jobs j
                 JOIN companies c ON j."companyId" = c.id
                 JOIN job_classifications jc ON j.id = jc."jobId"
-                WHERE jc.status = 'PENDING'
-                ORDER BY j."createdAt" ASC
+                WHERE jc.status = 'PENDING' AND j."indiaEligibility" = 'VERIFIED_INDIAN'
+                ORDER BY j."createdAt" DESC
                 LIMIT %s
                 """,
                 (limit,),
@@ -217,3 +217,17 @@ class JobRepository:
                     job_id,
                 ),
             )
+
+    def mark_expired_jobs(self) -> int:
+        """Mark active listings whose expiresAt date has passed as EXPIRED."""
+        with self.conn.cursor() as cur:
+            cur.execute(
+                """
+                UPDATE jobs
+                SET status = 'EXPIRED', "updatedAt" = NOW()
+                WHERE status = 'ACTIVE' AND "expiresAt" IS NOT NULL AND "expiresAt" < NOW()
+                RETURNING id;
+                """
+            )
+            expired = cur.fetchall()
+            return len(expired)

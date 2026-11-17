@@ -31,6 +31,7 @@ class GeminiClassifier:
             prompt_version=self.prompt_version,
         )
         self._client = None
+        self._is_quota_exhausted = False
 
         if self.api_key:
             try:
@@ -47,7 +48,7 @@ class GeminiClassifier:
 
     @property
     def is_available(self) -> bool:
-        return self._client is not None and bool(self.api_key)
+        return self._client is not None and bool(self.api_key) and not self._is_quota_exhausted
 
     def classify_job(
         self,
@@ -117,12 +118,22 @@ class GeminiClassifier:
 
                 # Handle 429 Rate Limit / Quota Exceeded
                 if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str:
+                    if "per day limit exceeded" in err_str or "GenerateRequestsPerDay" in err_str:
+                        logger.warning("Gemini daily quota exhausted. Skipping further AI classification calls.")
+                        self._is_quota_exhausted = True
+                        self.usage.failed_count += 1
+                        return None, "Gemini daily quota exhausted"
+
                     # Extract suggested retry delay if provided in error message
                     delay_match = re.search(r"retry in (\d+(?:\.\d+)?)s", err_str) or re.search(r"retryDelay': '(\d+)s'", err_str)
                     if delay_match:
-                        wait_seconds = float(delay_match.group(1)) + 2.0
+                        suggested_delay = float(delay_match.group(1))
+                        if suggested_delay > 10.0:
+                            logger.warning("Gemini rate limit suggests %.1fs wait; skipping attempt.", suggested_delay)
+                            return None, f"Rate limit delay excessive ({suggested_delay}s)"
+                        wait_seconds = suggested_delay + 1.0
                     else:
-                        wait_seconds = 15.0 * attempt
+                        wait_seconds = 2.0 * attempt
 
                     logger.info("Rate limit exceeded. Backing off for %.1f seconds...", wait_seconds)
                     time.sleep(wait_seconds)
