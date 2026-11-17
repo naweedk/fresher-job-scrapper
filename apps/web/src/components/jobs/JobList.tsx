@@ -2,7 +2,7 @@
 import React from 'react';
 import Grid from '@mui/material/Grid';
 import JobCard from './JobCard';
-import LoadingState from '../common/LoadingState';
+import JobCardSkeleton from './JobCardSkeleton';
 import EmptyState from '../common/EmptyState';
 import ErrorState from '../common/ErrorState';
 import type { JobListItem } from '../../types/api.types';
@@ -17,7 +17,15 @@ interface JobListProps {
 
 export default function JobList({ jobs, loading, error, onReset, onRetry }: JobListProps) {
   if (loading) {
-    return <LoadingState message="Finding relevant jobs across India..." />;
+    return (
+      <Grid container spacing={2.5}>
+        {Array.from({ length: 6 }).map((_, index) => (
+          <Grid key={`skeleton-${index}`} size={{ xs: 12, sm: 6, lg: 4 }}>
+            <JobCardSkeleton />
+          </Grid>
+        ))}
+      </Grid>
+    );
   }
 
   if (error) {

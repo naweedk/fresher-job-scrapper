@@ -2,18 +2,13 @@
 import React, { useState, useCallback } from 'react';
 import Box from '@mui/material/Box';
 import Container from '@mui/material/Container';
-import Typography from '@mui/material/Typography';
-import Paper from '@mui/material/Paper';
 import Header from '../components/layout/Header';
 import Footer from '../components/layout/Footer';
-import PlatformStats from '../components/stats/PlatformStats';
-import JobSearch from '../components/jobs/JobSearch';
-import JobFilters from '../components/jobs/JobFilters';
+import JobSearchHeader from '../components/jobs/JobSearchHeader';
+import JobResultsHeader from '../components/jobs/JobResultsHeader';
 import JobList from '../components/jobs/JobList';
-import JobSort from '../components/jobs/JobSort';
 import JobPagination from '../components/jobs/JobPagination';
 import { useJobs } from '../hooks/useJobs';
-import { useJobFilters } from '../hooks/useJobFilters';
 import type { JobsQueryParams } from '../types/api.types';
 
 const DEFAULT_PARAMS: JobsQueryParams = {
@@ -26,149 +21,77 @@ const DEFAULT_PARAMS: JobsQueryParams = {
 export default function HomePage() {
   const [params, setParams] = useState<JobsQueryParams>(DEFAULT_PARAMS);
   const { jobs, pagination, loading, error, refetch } = useJobs(params);
-  const { filters } = useJobFilters();
 
   const updateParams = useCallback((updates: Partial<JobsQueryParams>) => {
     setParams((prev) => ({ ...prev, ...updates }));
+  }, []);
+
+  const handleSearchSubmit = useCallback((search: string, city: string) => {
+    setParams((prev) => ({
+      ...prev,
+      search: search || undefined,
+      city: city || undefined,
+      page: 1,
+    }));
   }, []);
 
   const handleReset = useCallback(() => {
     setParams(DEFAULT_PARAMS);
   }, []);
 
+  const handleSortChange = useCallback((sortBy: string, sortOrder: string) => {
+    setParams((prev) => ({
+      ...prev,
+      sortBy,
+      sortOrder: sortOrder as 'ASC' | 'DESC',
+      page: 1,
+    }));
+  }, []);
+
   return (
     <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', bgcolor: 'background.default' }}>
+      {/* 1. Compact Navbar */}
       <Header />
 
-      {/* Hero Section */}
-      <Box
-        component="section"
-        sx={{
-          bgcolor: '#ffffff',
-          borderBottom: '1px solid #e8eaed',
-          py: { xs: 4, md: 6 },
-        }}
-      >
-        <Container maxWidth="xl">
-          <Box sx={{ maxWidth: 720 }}>
-            <Typography
-              variant="h1"
-              gutterBottom
-              sx={{
-                fontSize: { xs: '1.85rem', sm: '2.4rem', md: '2.8rem' },
-                lineHeight: 1.15,
-                color: 'text.primary',
-                letterSpacing: '-0.02em',
-              }}
-            >
-              Find Your Next Opportunity.
-            </Typography>
-            <Typography
-              variant="h6"
-              color="text.secondary"
-              sx={{ fontWeight: 400, mb: 3, fontSize: { xs: '1rem', md: '1.2rem' } }}
-            >
-              Discover internships and entry-level jobs from companies across India.
-            </Typography>
+      {/* 2. Compact Job Search Header */}
+      <JobSearchHeader
+        searchVal={params.search ?? ''}
+        cityVal={params.city ?? ''}
+        onSearch={handleSearchSubmit}
+      />
 
-            <Box sx={{ maxWidth: 580 }}>
-              <JobSearch
-                value={params.search ?? ''}
-                onChange={(searchVal) => updateParams({ search: searchVal || undefined, page: 1 })}
-                placeholder="Search job title, company or skills (e.g. React, Python)..."
-              />
-            </Box>
-          </Box>
+      {/* 3. Main Discovery Workspace */}
+      <Box component="main" sx={{ flex: 1, py: { xs: 2.5, md: 3.5 } }}>
+        <Container maxWidth="xl">
+          {/* Results Header (Count + Sort) */}
+          <JobResultsHeader
+            pagination={pagination}
+            loading={loading}
+            sortBy={params.sortBy ?? 'createdAt'}
+            sortOrder={params.sortOrder ?? 'DESC'}
+            onSortChange={handleSortChange}
+          />
+
+          {/* Job Cards Grid with Skeleton Loader */}
+          <JobList
+            jobs={jobs}
+            loading={loading}
+            error={error}
+            onReset={handleReset}
+            onRetry={refetch}
+          />
+
+          {/* Pagination */}
+          {pagination && pagination.totalPages > 1 && (
+            <JobPagination
+              pagination={pagination}
+              onChange={(newPage) => updateParams({ page: newPage })}
+            />
+          )}
         </Container>
       </Box>
 
-      {/* Live Platform Stats */}
-      <Box component="section" sx={{ bgcolor: '#f8f9fa', borderBottom: '1px solid #e8eaed', py: 3 }}>
-        <Container maxWidth="xl">
-          <PlatformStats />
-        </Container>
-      </Box>
-
-      {/* Main Job Discovery Section */}
-      <Box component="main" sx={{ flex: 1, py: 4 }}>
-        <Container maxWidth="xl">
-          <Box sx={{ display: 'flex', gap: 3.5, alignItems: 'flex-start' }}>
-            {/* Desktop Filters Sidebar */}
-            <Box sx={{ display: { xs: 'none', md: 'block' }, width: 250, flexShrink: 0 }}>
-              <Paper variant="outlined" sx={{ p: 2.5, bgcolor: '#ffffff' }}>
-                <JobFilters
-                  filters={filters}
-                  activeFilters={params}
-                  onChange={updateParams}
-                  onReset={handleReset}
-                />
-              </Paper>
-            </Box>
-
-            {/* Results Content Area */}
-            <Box sx={{ flex: 1, minWidth: 0 }}>
-              {/* Toolbar: Result count + Mobile filters button + Sorting */}
-              <Box
-                sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  mb: 3,
-                  gap: 2,
-                  flexWrap: 'wrap',
-                }}
-              >
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                  <Box sx={{ display: { md: 'none' } }}>
-                    <JobFilters
-                      filters={filters}
-                      activeFilters={params}
-                      onChange={updateParams}
-                      onReset={handleReset}
-                    />
-                  </Box>
-                  <Typography variant="body1" color="text.secondary" sx={{ fontWeight: 500 }}>
-                    {loading
-                      ? 'Searching jobs...'
-                      : pagination
-                      ? `${pagination.total.toLocaleString('en-IN')} verified opportunities`
-                      : ''}
-                  </Typography>
-                </Box>
-
-                <JobSort
-                  sortBy={params.sortBy ?? 'createdAt'}
-                  sortOrder={params.sortOrder ?? 'DESC'}
-                  onChange={(newSortBy, newSortOrder) =>
-                    updateParams({ sortBy: newSortBy, sortOrder: newSortOrder, page: 1 })
-                  }
-                />
-              </Box>
-
-              {/* Jobs List Grid / Loading / Error / Empty States */}
-              <JobList
-                jobs={jobs}
-                loading={loading}
-                error={error}
-                onReset={handleReset}
-                onRetry={refetch}
-              />
-
-              {/* Server-Side Pagination */}
-              {pagination && pagination.totalPages > 1 && (
-                <JobPagination
-                  pagination={pagination}
-                  onChange={(newPage) => {
-                    updateParams({ page: newPage });
-                    window.scrollTo({ top: 380, behavior: 'smooth' });
-                  }}
-                />
-              )}
-            </Box>
-          </Box>
-        </Container>
-      </Box>
-
+      {/* 4. Compact Professional Footer */}
       <Footer />
     </Box>
   );

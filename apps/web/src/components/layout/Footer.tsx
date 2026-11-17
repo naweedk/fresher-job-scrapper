@@ -3,47 +3,81 @@ import React from 'react';
 import Box from '@mui/material/Box';
 import Container from '@mui/material/Container';
 import Typography from '@mui/material/Typography';
-import WorkIcon from '@mui/icons-material/Work';
+import Link from 'next/link';
+import WorkOutlineOutlinedIcon from '@mui/icons-material/WorkOutlineOutlined';
+import VerifiedIcon from '@mui/icons-material/Verified';
 
 export default function Footer() {
   return (
     <Box
       component="footer"
       sx={{
-        bgcolor: '#f8f9fa',
-        borderTop: '1px solid #e8eaed',
-        mt: 8,
-        py: 4,
+        bgcolor: '#ffffff',
+        borderTop: '1px solid #e2e8f0',
+        mt: 'auto',
+        py: 3,
       }}
     >
       <Container maxWidth="xl">
         <Box
           sx={{
             display: 'flex',
-            flexDirection: { xs: 'column', md: 'row' },
-            alignItems: { md: 'center' },
+            flexDirection: { xs: 'column', sm: 'row' },
+            alignItems: { xs: 'flex-start', sm: 'center' },
             justifyContent: 'space-between',
             gap: 2,
           }}
         >
+          {/* Brand & tagline */}
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <WorkIcon sx={{ color: 'primary.main', fontSize: 20 }} />
-            <Typography sx={{ fontWeight: 700 }} color="primary.main">
+            <Box
+              sx={{
+                width: 24,
+                height: 24,
+                borderRadius: 1,
+                bgcolor: 'primary.main',
+                color: '#ffffff',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <WorkOutlineOutlinedIcon sx={{ fontSize: 14 }} />
+            </Box>
+            <Typography variant="body2" sx={{ fontWeight: 700, color: '#0f172a' }}>
               Fresher Jobs India
+            </Typography>
+            <Typography variant="caption" sx={{ color: 'text.secondary', display: { xs: 'none', md: 'inline' } }}>
+              — Authentic entry-level and fresher jobs across Indian tech hubs.
             </Typography>
           </Box>
 
-          <Typography
-            variant="body2"
-            color="text.secondary"
-            sx={{ textAlign: { xs: 'left', md: 'center' } }}
-          >
-            Aggregating genuine entry-level jobs &amp; internships from public sources.
-          </Typography>
+          {/* Quick links & badge */}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2.5, flexWrap: 'wrap' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+              <VerifiedIcon sx={{ fontSize: 14, color: 'secondary.main' }} />
+              <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 500 }}>
+                100% India-Verified Opportunities
+              </Typography>
+            </Box>
 
-          <Typography variant="body2" color="text.secondary">
-            Built as a technical assessment project. Data sourced from public job boards.
-          </Typography>
+            <Link href="/about" style={{ textDecoration: 'none' }}>
+              <Typography
+                variant="caption"
+                sx={{
+                  color: 'text.secondary',
+                  fontWeight: 500,
+                  '&:hover': { color: 'primary.main' },
+                }}
+              >
+                About Pipeline
+              </Typography>
+            </Link>
+
+            <Typography variant="caption" color="text.disabled">
+              © {new Date().getFullYear()} Fresher Jobs India
+            </Typography>
+          </Box>
         </Box>
       </Container>
     </Box>
