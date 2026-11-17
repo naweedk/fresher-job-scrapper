@@ -42,9 +42,14 @@ def main():
     parser = argparse.ArgumentParser(description="Fresher Jobs India Ingestion Engine")
     parser.add_argument(
         "--stage",
-        choices=["all", "collect", "classify", "test-db"],
+        choices=["all", "collect", "classify", "filter-india", "test-db"],
         default="all",
         help="Pipeline stage to execute (default: all)",
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="For filter-india stage, evaluate without writing to database",
     )
     parser.add_argument(
         "--source",
@@ -97,6 +102,11 @@ def main():
         print(f"  Estimated AI cost (USD) : ${summary['classification_cost_usd']:.4f}")
         print(f"  Total execution time    : {summary['elapsed_seconds']}s")
         print("=" * 65 + "\n")
+
+    elif args.stage == "filter-india":
+        from backfill_india_eligibility import run_backfill
+        logger.info("Executing India eligibility filter and backfill (dry_run=%s)...", args.dry_run)
+        run_backfill(dry_run=args.dry_run)
 
     elif args.stage == "classify":
         logger.info("Executing AI classification stage only (limit=%d)...", args.limit)

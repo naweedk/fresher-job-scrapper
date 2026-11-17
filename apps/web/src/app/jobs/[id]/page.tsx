@@ -240,9 +240,12 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
                         variant="outlined"
                       />
                     )}
-                    {classification?.workMode && (
+                    {(job.workMode || classification?.workMode) && (
                       <Chip
-                        label={WORK_MODE_LABELS[classification.workMode] ?? classification.workMode}
+                        label={
+                          WORK_MODE_LABELS[job.workMode || classification?.workMode || ''] ??
+                          (job.workMode || classification?.workMode)
+                        }
                         variant="outlined"
                       />
                     )}
@@ -328,6 +331,16 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
                       classification?.jobType
                         ? JOB_TYPE_LABELS[classification.jobType] ?? classification.jobType
                         : 'Fresher / Entry-Level'
+                    }
+                  />
+
+                  <InfoRow
+                    icon={<WorkIcon fontSize="small" />}
+                    label="Work Mode"
+                    value={
+                      (job.workMode || classification?.workMode)
+                        ? WORK_MODE_LABELS[job.workMode || classification?.workMode || ''] ?? (job.workMode || classification?.workMode)
+                        : 'On-site'
                     }
                   />
 

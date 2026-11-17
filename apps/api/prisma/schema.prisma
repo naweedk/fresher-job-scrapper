@@ -52,6 +52,12 @@ enum WorkMode {
   UNKNOWN
 }
 
+enum IndiaEligibility {
+  VERIFIED_INDIAN
+  INTERNATIONAL
+  AMBIGUOUS
+}
+
 enum ClassificationStatus {
   PENDING
   COMPLETED
@@ -105,6 +111,10 @@ model Job {
   jobUrl       String
   canonicalUrl String?
   contentHash  String?
+  countryCode            String?
+  workMode               WorkMode          @default(UNKNOWN)
+  indiaEligibility       IndiaEligibility  @default(AMBIGUOUS)
+  remoteEligibilityScope String?
   postedAt     DateTime?
   expiresAt    DateTime?
   status       JobStatus @default(ACTIVE)
@@ -119,6 +129,9 @@ model Job {
   @@index([title])
   @@index([location])
   @@index([status])
+  @@index([indiaEligibility])
+  @@index([workMode])
+  @@index([countryCode])
   @@index([postedAt])
   @@index([companyId])
   @@index([sourceId])

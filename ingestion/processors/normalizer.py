@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 from bs4 import BeautifulSoup
 
 from processors.content_hasher import generate_content_hash
+from processors.india_eligibility import evaluate_india_eligibility
 from processors.url_normalizer import normalize_url
 from schemas import NormalizedJob, RawJob
 
@@ -105,13 +106,22 @@ def normalize_job(raw: RawJob, source_id: str) -> NormalizedJob:
     if posted_at and posted_at.tzinfo is None:
         posted_at = posted_at.replace(tzinfo=timezone.utc)
 
+    # Evaluate India location and work-mode eligibility
+    india_res = evaluate_india_eligibility(
+        location=clean_loc,
+        title=clean_title,
+        description=clean_desc,
+    )
+
+    final_loc = india_res.city if india_res.city else clean_loc
+
     return NormalizedJob(
         source_id=source_id,
         external_id=raw.external_id,
         title=clean_title,
         company_name=clean_company,
         description=clean_desc,
-        location=clean_loc,
+        location=final_loc,
         job_url=raw.job_url,
         canonical_url=canonical,
         content_hash=content_hash,
@@ -119,4 +129,8 @@ def normalize_job(raw: RawJob, source_id: str) -> NormalizedJob:
         expires_at=raw.expires_at,
         company_url=raw.company_url,
         company_logo=raw.company_logo,
+        country_code=india_res.country_code,
+        work_mode=india_res.work_mode,
+        india_eligibility=india_res.eligibility,
+        remote_eligibility_scope=india_res.remote_scope,
     )

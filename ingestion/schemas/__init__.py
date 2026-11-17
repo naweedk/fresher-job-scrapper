@@ -42,6 +42,12 @@ class WorkModeEnum(str, Enum):
     UNKNOWN = "UNKNOWN"
 
 
+class IndiaEligibilityEnum(str, Enum):
+    VERIFIED_INDIAN = "VERIFIED_INDIAN"
+    INTERNATIONAL = "INTERNATIONAL"
+    AMBIGUOUS = "AMBIGUOUS"
+
+
 class ClassificationStatusEnum(str, Enum):
     PENDING = "PENDING"
     COMPLETED = "COMPLETED"
@@ -81,6 +87,10 @@ class NormalizedJob(BaseModel):
     status: JobStatusEnum = JobStatusEnum.ACTIVE
     company_url: Optional[str] = None
     company_logo: Optional[str] = None
+    country_code: Optional[str] = None
+    work_mode: WorkModeEnum = WorkModeEnum.UNKNOWN
+    india_eligibility: IndiaEligibilityEnum = IndiaEligibilityEnum.AMBIGUOUS
+    remote_eligibility_scope: Optional[str] = None
 
 
 class ClassificationResult(BaseModel):

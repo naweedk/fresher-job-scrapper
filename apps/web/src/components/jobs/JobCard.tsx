@@ -59,7 +59,7 @@ export default function JobCard({ job }: Props) {
   const { classification } = job;
   const location = classification?.city ?? job.location;
   const jobType = formatJobType(classification?.jobType);
-  const workMode = formatWorkMode(classification?.workMode);
+  const workMode = formatWorkMode(job.workMode || classification?.workMode);
   const skills = classification?.skills ?? [];
   const isClassified = classification?.status === 'COMPLETED';
 

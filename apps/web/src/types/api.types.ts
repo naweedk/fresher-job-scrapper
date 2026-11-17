@@ -8,6 +8,9 @@ export interface JobListItem {
   id: string;
   title: string;
   location?: string;
+  workMode?: string;
+  countryCode?: string;
+  indiaEligibility?: string;
   jobUrl: string;
   postedAt?: string;
   createdAt: string;

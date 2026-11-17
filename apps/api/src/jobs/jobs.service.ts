@@ -7,7 +7,7 @@ export class JobsService {
   constructor(private readonly prisma: PrismaService) {}
 
   /**
-   * Returns a paginated, filtered, and sorted list of active jobs.
+   * Returns a paginated, filtered, and sorted list of active, verified Indian jobs.
    */
   async findAll(query: QueryJobsDto) {
     const {
@@ -26,34 +26,52 @@ export class JobsService {
 
     const order = sortOrder.toLowerCase() as 'asc' | 'desc';
 
-    // ── WHERE clause ──────────────────────────────────────────────────────────
-    const where: any = { status: 'ACTIVE' };
+    // ── WHERE clause: strictly enforce ACTIVE & VERIFIED_INDIAN ────────────────
+    const andConditions: any[] = [
+      { status: 'ACTIVE' },
+      { indiaEligibility: 'VERIFIED_INDIAN' },
+    ];
 
     if (search) {
-      where.OR = [
-        { title: { contains: search, mode: 'insensitive' } },
-        { description: { contains: search, mode: 'insensitive' } },
-        { company: { name: { contains: search, mode: 'insensitive' } } },
-      ];
+      andConditions.push({
+        OR: [
+          { title: { contains: search, mode: 'insensitive' } },
+          { description: { contains: search, mode: 'insensitive' } },
+          { company: { name: { contains: search, mode: 'insensitive' } } },
+          { location: { contains: search, mode: 'insensitive' } },
+        ],
+      });
     }
 
-    // Classification-level filters accumulate into a single `classification` block
+    if (city) {
+      andConditions.push({
+        OR: [
+          { location: { contains: city, mode: 'insensitive' } },
+          { classification: { city: { contains: city, mode: 'insensitive' } } },
+        ],
+      });
+    }
+
+    if (workMode) {
+      andConditions.push({
+        OR: [
+          { workMode: workMode },
+          { classification: { workMode: workMode } },
+        ],
+      });
+    }
+
+    // Classification-level sub-filters
     const classificationFilter: Record<string, any> = {};
 
     if (role) {
       classificationFilter.role = { contains: role, mode: 'insensitive' };
-    }
-    if (city) {
-      classificationFilter.city = { contains: city, mode: 'insensitive' };
     }
     if (jobType) {
       classificationFilter.jobType = jobType;
     }
     if (experienceLevel) {
       classificationFilter.experienceLevel = experienceLevel;
-    }
-    if (workMode) {
-      classificationFilter.workMode = workMode;
     }
     if (skills) {
       const skillList = skills.split(',').map((s) => s.trim()).filter(Boolean);
@@ -63,8 +81,10 @@ export class JobsService {
     }
 
     if (Object.keys(classificationFilter).length > 0) {
-      where.classification = classificationFilter;
+      andConditions.push({ classification: classificationFilter });
     }
+
+    const where = { AND: andConditions };
 
     // ── ORDER BY clause ───────────────────────────────────────────────────────
     let orderBy: any;
@@ -89,6 +109,9 @@ export class JobsService {
       id: true,
       title: true,
       location: true,
+      workMode: true,
+      indiaEligibility: true,
+      countryCode: true,
       jobUrl: true,
       postedAt: true,
       createdAt: true,
@@ -140,7 +163,7 @@ export class JobsService {
 
   /**
    * Returns a single job with all details.
-   * Throws NotFoundException when no job matches the given id.
+   * Throws NotFoundException if the job does not exist or is not a verified Indian active job.
    */
   async findOne(id: string) {
     const job = await this.prisma.job.findUnique({
@@ -159,47 +182,68 @@ export class JobsService {
       },
     });
 
-    if (!job) {
-      throw new NotFoundException('Job not found');
+    if (!job || job.status !== 'ACTIVE' || job.indiaEligibility !== 'VERIFIED_INDIAN') {
+      throw new NotFoundException(`Job with ID '${id}' not found`);
     }
 
     return job;
   }
 
   /**
-   * Returns distinct filter values from completed job classifications.
+   * Returns distinct filter values strictly from verified active Indian jobs.
    */
   async getFilters() {
-    const [roles, cities, jobTypes, experienceLevels, workModes] =
+    const verifiedWhere = {
+      job: {
+        status: 'ACTIVE' as const,
+        indiaEligibility: 'VERIFIED_INDIAN' as const,
+      },
+    };
+
+    const [roles, classifiedCities, jobCities, jobTypes, experienceLevels] =
       await Promise.all([
         this.prisma.jobClassification.groupBy({
           by: ['role'],
-          where: { status: 'COMPLETED', role: { not: null } },
+          where: { ...verifiedWhere, role: { not: null } },
         }),
         this.prisma.jobClassification.groupBy({
           by: ['city'],
-          where: { status: 'COMPLETED', city: { not: null } },
+          where: { ...verifiedWhere, city: { not: null } },
+        }),
+        this.prisma.job.groupBy({
+          by: ['location'],
+          where: {
+            status: 'ACTIVE',
+            indiaEligibility: 'VERIFIED_INDIAN',
+            location: { not: null },
+          },
         }),
         this.prisma.jobClassification.groupBy({
           by: ['jobType'],
-          where: { status: 'COMPLETED', jobType: { not: null } },
+          where: { ...verifiedWhere, jobType: { not: null } },
         }),
         this.prisma.jobClassification.groupBy({
           by: ['experienceLevel'],
-          where: { status: 'COMPLETED', experienceLevel: { not: null } },
-        }),
-        this.prisma.jobClassification.groupBy({
-          by: ['workMode'],
-          where: { status: 'COMPLETED', workMode: { not: null } },
+          where: { ...verifiedWhere, experienceLevel: { not: null } },
         }),
       ]);
 
+    const allCities = new Set<string>();
+    for (const c of classifiedCities) {
+      if (c.city) allCities.add(c.city);
+    }
+    for (const j of jobCities) {
+      if (j.location && !['remote', 'india'].includes(j.location.toLowerCase())) {
+        allCities.add(j.location);
+      }
+    }
+
     return {
       roles: roles.map((r) => r.role).filter(Boolean).sort(),
-      cities: cities.map((c) => c.city).filter(Boolean).sort(),
+      cities: Array.from(allCities).sort(),
       jobTypes: jobTypes.map((j) => j.jobType).filter(Boolean),
       experienceLevels: experienceLevels.map((e) => e.experienceLevel).filter(Boolean),
-      workModes: workModes.map((w) => w.workMode).filter(Boolean),
+      workModes: ['ONSITE', 'HYBRID', 'REMOTE'],
     };
   }
 }

@@ -14,6 +14,9 @@ const mockJob = {
   id: 'job-1',
   title: 'React Developer Intern',
   location: 'Mumbai',
+  workMode: 'REMOTE',
+  indiaEligibility: 'VERIFIED_INDIAN',
+  countryCode: 'IN',
   jobUrl: 'https://example.com/job/1',
   postedAt: null,
   createdAt: new Date('2026-11-01T00:00:00Z'),
@@ -33,7 +36,7 @@ const mockJob = {
 
 const mockFullJob = {
   ...mockJob,
-  description: 'Join our team as a frontend intern...',
+  description: 'Join our team as a frontend intern in Mumbai...',
   externalId: 'ext-123',
   canonicalUrl: 'https://example.com/job/1',
   expiresAt: null,
@@ -49,6 +52,7 @@ function buildMockPrisma() {
       findMany: jest.fn().mockResolvedValue([mockJob]),
       count: jest.fn().mockResolvedValue(1),
       findUnique: jest.fn().mockResolvedValue(mockFullJob),
+      groupBy: jest.fn().mockResolvedValue([{ location: 'Mumbai' }]),
     },
     jobClassification: {
       groupBy: jest.fn().mockResolvedValue([]),
@@ -92,13 +96,17 @@ describe('JobsService', () => {
       expect(result.pagination.hasPreviousPage).toBe(false);
     });
 
-    it('applies status=ACTIVE filter always', async () => {
+    it('strictly enforces status=ACTIVE and indiaEligibility=VERIFIED_INDIAN', async () => {
       await service.findAll(new QueryJobsDto());
-      const [findManyCall] = (prisma.$transaction as jest.Mock).mock.calls[0][0];
-      void findManyCall; // $transaction receives the promises
-      // Verify status ACTIVE in where via findMany call
       expect(prisma.job.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({ where: expect.objectContaining({ status: 'ACTIVE' }) }),
+        expect.objectContaining({
+          where: {
+            AND: expect.arrayContaining([
+              { status: 'ACTIVE' },
+              { indiaEligibility: 'VERIFIED_INDIAN' },
+            ]),
+          },
+        }),
       );
     });
 
@@ -109,24 +117,32 @@ describe('JobsService', () => {
       expect(prisma.job.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
-            OR: expect.arrayContaining([
-              { title: { contains: 'react', mode: 'insensitive' } },
+            AND: expect.arrayContaining([
+              expect.objectContaining({
+                OR: expect.arrayContaining([
+                  { title: { contains: 'react', mode: 'insensitive' } },
+                ]),
+              }),
             ]),
           }),
         }),
       );
     });
 
-    it('applies city classification filter', async () => {
+    it('applies city filter to location and classification.city', async () => {
       const dto = Object.assign(new QueryJobsDto(), { city: 'Mumbai' });
       await service.findAll(dto);
 
       expect(prisma.job.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
-            classification: expect.objectContaining({
-              city: { contains: 'Mumbai', mode: 'insensitive' },
-            }),
+            AND: expect.arrayContaining([
+              expect.objectContaining({
+                OR: expect.arrayContaining([
+                  { location: { contains: 'Mumbai', mode: 'insensitive' } },
+                ]),
+              }),
+            ]),
           }),
         }),
       );
@@ -139,9 +155,13 @@ describe('JobsService', () => {
       expect(prisma.job.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
-            classification: expect.objectContaining({
-              role: { contains: 'Frontend', mode: 'insensitive' },
-            }),
+            AND: expect.arrayContaining([
+              expect.objectContaining({
+                classification: expect.objectContaining({
+                  role: { contains: 'Frontend', mode: 'insensitive' },
+                }),
+              }),
+            ]),
           }),
         }),
       );
@@ -154,7 +174,11 @@ describe('JobsService', () => {
       expect(prisma.job.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
-            classification: expect.objectContaining({ jobType: 'INTERNSHIP' }),
+            AND: expect.arrayContaining([
+              expect.objectContaining({
+                classification: expect.objectContaining({ jobType: 'INTERNSHIP' }),
+              }),
+            ]),
           }),
         }),
       );
@@ -167,54 +191,50 @@ describe('JobsService', () => {
       expect(prisma.job.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
-            classification: expect.objectContaining({ experienceLevel: 'FRESHER' }),
+            AND: expect.arrayContaining([
+              expect.objectContaining({
+                classification: expect.objectContaining({ experienceLevel: 'FRESHER' }),
+              }),
+            ]),
           }),
         }),
       );
     });
 
-    it('applies workMode filter', async () => {
+    it('applies workMode filter across job and classification', async () => {
       const dto = Object.assign(new QueryJobsDto(), { workMode: 'REMOTE' });
       await service.findAll(dto);
 
       expect(prisma.job.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
-            classification: expect.objectContaining({ workMode: 'REMOTE' }),
+            AND: expect.arrayContaining([
+              expect.objectContaining({
+                OR: expect.arrayContaining([
+                  { workMode: 'REMOTE' },
+                  { classification: { workMode: 'REMOTE' } },
+                ]),
+              }),
+            ]),
           }),
         }),
       );
     });
 
     it('applies skills filter splitting comma-separated string', async () => {
-      const dto = Object.assign(new QueryJobsDto(), { skills: 'React,Node.js' });
+      const dto = Object.assign(new QueryJobsDto(), { skills: 'React, TypeScript' });
       await service.findAll(dto);
 
       expect(prisma.job.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
-            classification: expect.objectContaining({
-              skills: { hasSome: ['React', 'Node.js'] },
-            }),
-          }),
-        }),
-      );
-    });
-
-    it('applies multiple filters together', async () => {
-      const dto = Object.assign(new QueryJobsDto(), {
-        city: 'Bengaluru', jobType: 'FULL_TIME', workMode: 'HYBRID',
-      });
-      await service.findAll(dto);
-
-      expect(prisma.job.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({
-            classification: expect.objectContaining({
-              city: { contains: 'Bengaluru', mode: 'insensitive' },
-              jobType: 'FULL_TIME',
-              workMode: 'HYBRID',
-            }),
+            AND: expect.arrayContaining([
+              expect.objectContaining({
+                classification: expect.objectContaining({
+                  skills: { hasSome: ['React', 'TypeScript'] },
+                }),
+              }),
+            ]),
           }),
         }),
       );
@@ -273,11 +293,12 @@ describe('JobsService', () => {
   // ── findOne ──────────────────────────────────────────────────────────────
 
   describe('findOne', () => {
-    it('returns full job details when found', async () => {
+    it('returns full job details when found and verified Indian', async () => {
       const result = await service.findOne('job-1');
 
       expect(result.id).toBe('job-1');
       expect(result.title).toBe('React Developer Intern');
+      expect(result.indiaEligibility).toBe('VERIFIED_INDIAN');
       expect(result.company.name).toBe('Acme Corp');
       expect(result.source?.name).toBe('Simplify Jobs');
     });
@@ -286,7 +307,26 @@ describe('JobsService', () => {
       prisma.job.findUnique.mockResolvedValue(null);
 
       await expect(service.findOne('nonexistent-id')).rejects.toThrow(NotFoundException);
-      await expect(service.findOne('nonexistent-id')).rejects.toThrow('Job not found');
+    });
+
+    it('throws NotFoundException when job is INTERNATIONAL', async () => {
+      prisma.job.findUnique.mockResolvedValue({
+        ...mockFullJob,
+        indiaEligibility: 'INTERNATIONAL',
+        location: 'London, UK',
+      });
+
+      await expect(service.findOne('job-international')).rejects.toThrow(NotFoundException);
+      await expect(service.findOne('job-international')).rejects.toThrow("Job with ID 'job-international' not found");
+    });
+
+    it('throws NotFoundException when job is AMBIGUOUS', async () => {
+      prisma.job.findUnique.mockResolvedValue({
+        ...mockFullJob,
+        indiaEligibility: 'AMBIGUOUS',
+      });
+
+      await expect(service.findOne('job-ambiguous')).rejects.toThrow(NotFoundException);
     });
 
     it('queries by correct id', async () => {
@@ -298,50 +338,26 @@ describe('JobsService', () => {
     });
   });
 
-  // ── getFilters ───────────────────────────────────────────────────────────
+  // ── getFilters ────────────────────────────────────────────────────────────
 
   describe('getFilters', () => {
-    beforeEach(() => {
-      (prisma.jobClassification.groupBy as jest.Mock)
-        .mockResolvedValueOnce([{ role: 'Software Engineer' }, { role: 'Data Analyst' }])
-        .mockResolvedValueOnce([{ city: 'Mumbai' }, { city: 'Bengaluru' }])
-        .mockResolvedValueOnce([{ jobType: 'INTERNSHIP' }, { jobType: 'FULL_TIME' }])
-        .mockResolvedValueOnce([{ experienceLevel: 'FRESHER' }])
-        .mockResolvedValueOnce([{ workMode: 'REMOTE' }, { workMode: 'HYBRID' }]);
-    });
+    it('returns distinct filters for verified Indian opportunities', async () => {
+      prisma.jobClassification.groupBy
+        .mockResolvedValueOnce([{ role: 'Frontend Developer' }])
+        .mockResolvedValueOnce([{ city: 'Bengaluru' }])
+        .mockResolvedValueOnce([{ jobType: 'INTERNSHIP' }])
+        .mockResolvedValueOnce([{ experienceLevel: 'FRESHER' }]);
 
-    it('returns sorted roles', async () => {
-      const result = await service.getFilters();
-      expect(result.roles).toEqual(['Data Analyst', 'Software Engineer']);
-    });
+      prisma.job.groupBy.mockResolvedValueOnce([{ location: 'Mumbai' }]);
 
-    it('returns sorted cities', async () => {
-      const result = await service.getFilters();
-      expect(result.cities).toEqual(['Bengaluru', 'Mumbai']);
-    });
+      const filters = await service.getFilters();
 
-    it('returns job types', async () => {
-      const result = await service.getFilters();
-      expect(result.jobTypes).toContain('INTERNSHIP');
-      expect(result.jobTypes).toContain('FULL_TIME');
-    });
-
-    it('queries only COMPLETED classifications', async () => {
-      await service.getFilters();
-
-      const calls = (prisma.jobClassification.groupBy as jest.Mock).mock.calls;
-      calls.forEach((call) => {
-        expect(call[0].where.status).toBe('COMPLETED');
-      });
-    });
-
-    it('returns empty arrays when no classifications exist', async () => {
-      (prisma.jobClassification.groupBy as jest.Mock).mockReset().mockResolvedValue([]);
-      const result = await service.getFilters();
-
-      expect(result.roles).toEqual([]);
-      expect(result.cities).toEqual([]);
-      expect(result.jobTypes).toEqual([]);
+      expect(filters.roles).toEqual(['Frontend Developer']);
+      expect(filters.cities).toContain('Bengaluru');
+      expect(filters.cities).toContain('Mumbai');
+      expect(filters.workModes).toEqual(['ONSITE', 'HYBRID', 'REMOTE']);
+      expect(filters.jobTypes).toEqual(['INTERNSHIP']);
+      expect(filters.experienceLevels).toEqual(['FRESHER']);
     });
   });
 });

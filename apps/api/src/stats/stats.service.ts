@@ -6,10 +6,18 @@ export class StatsService {
   constructor(private readonly prisma: PrismaService) {}
 
   /**
-   * Returns extended platform statistics including classification breakdown,
-   * job-type counts, and work-mode counts.
+   * Returns extended platform statistics scoped strictly to verified Indian opportunities.
    */
   async getSummary() {
+    const verifiedWhere = {
+      indiaEligibility: 'VERIFIED_INDIAN' as const,
+    };
+
+    const activeVerifiedWhere = {
+      status: 'ACTIVE' as const,
+      indiaEligibility: 'VERIFIED_INDIAN' as const,
+    };
+
     const [
       totalJobs,
       activeJobs,
@@ -22,25 +30,61 @@ export class StatsService {
       internshipCount,
       fullTimeCount,
       remoteCount,
+      onsiteCount,
+      hybridCount,
     ] = await Promise.all([
-      this.prisma.job.count(),
-      this.prisma.job.count({ where: { status: 'ACTIVE' } }),
-      this.prisma.job.count({ where: { status: 'EXPIRED' } }),
-      this.prisma.company.count(),
-      this.prisma.source.count({ where: { isActive: true } }),
-      this.prisma.jobClassification.count({ where: { status: 'COMPLETED' } }),
-      this.prisma.jobClassification.count({ where: { status: 'PENDING' } }),
-      this.prisma.jobClassification.count({
-        where: { status: { in: ['FAILED', 'REVIEW_REQUIRED'] } },
+      this.prisma.job.count({ where: verifiedWhere }),
+      this.prisma.job.count({ where: activeVerifiedWhere }),
+      this.prisma.job.count({
+        where: { status: 'EXPIRED', ...verifiedWhere },
+      }),
+      this.prisma.company.count({
+        where: {
+          jobs: {
+            some: activeVerifiedWhere,
+          },
+        },
+      }),
+      this.prisma.source.count({
+        where: {
+          isActive: true,
+          jobs: {
+            some: activeVerifiedWhere,
+          },
+        },
       }),
       this.prisma.jobClassification.count({
-        where: { status: 'COMPLETED', jobType: 'INTERNSHIP' },
+        where: { status: 'COMPLETED', job: verifiedWhere },
       }),
       this.prisma.jobClassification.count({
-        where: { status: 'COMPLETED', jobType: 'FULL_TIME' },
+        where: { status: 'PENDING', job: verifiedWhere },
       }),
       this.prisma.jobClassification.count({
-        where: { status: 'COMPLETED', workMode: 'REMOTE' },
+        where: {
+          status: { in: ['FAILED', 'REVIEW_REQUIRED'] },
+          job: verifiedWhere,
+        },
+      }),
+      this.prisma.jobClassification.count({
+        where: {
+          jobType: 'INTERNSHIP',
+          job: verifiedWhere,
+        },
+      }),
+      this.prisma.jobClassification.count({
+        where: {
+          jobType: 'FULL_TIME',
+          job: verifiedWhere,
+        },
+      }),
+      this.prisma.job.count({
+        where: { ...activeVerifiedWhere, workMode: 'REMOTE' },
+      }),
+      this.prisma.job.count({
+        where: { ...activeVerifiedWhere, workMode: 'ONSITE' },
+      }),
+      this.prisma.job.count({
+        where: { ...activeVerifiedWhere, workMode: 'HYBRID' },
       }),
     ]);
 
@@ -61,6 +105,8 @@ export class StatsService {
       },
       byWorkMode: {
         remote: remoteCount,
+        onsite: onsiteCount,
+        hybrid: hybridCount,
       },
       lastUpdated: new Date().toISOString(),
     };

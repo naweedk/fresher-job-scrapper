@@ -95,12 +95,14 @@ class JobRepository:
                 INSERT INTO jobs (
                     id, "companyId", "sourceId", "externalId", title,
                     description, location, "jobUrl", "canonicalUrl",
-                    "contentHash", "postedAt", "expiresAt", status,
+                    "contentHash", "countryCode", "workMode", "indiaEligibility",
+                    "remoteEligibilityScope", "postedAt", "expiresAt", status,
                     "createdAt", "updatedAt"
                 )
                 VALUES (
                     gen_random_uuid(), %s, %s, %s, %s,
                     %s, %s, %s, %s,
+                    %s, %s, %s::"WorkMode", %s::"IndiaEligibility",
                     %s, %s, %s, %s::"JobStatus",
                     NOW(), NOW()
                 )
@@ -116,6 +118,10 @@ class JobRepository:
                     job.job_url,
                     job.canonical_url,
                     job.content_hash,
+                    job.country_code,
+                    job.work_mode.value,
+                    job.india_eligibility.value,
+                    job.remote_eligibility_scope,
                     job.posted_at,
                     job.expires_at,
                     job.status.value,
@@ -128,13 +134,13 @@ class JobRepository:
             cur.execute(
                 """
                 INSERT INTO job_classifications (
-                    id, "jobId", status, skills, "createdAt", "updatedAt"
+                    id, "jobId", status, "workMode", skills, "createdAt", "updatedAt"
                 )
                 VALUES (
-                    gen_random_uuid(), %s, %s::"ClassificationStatus", %s, NOW(), NOW()
+                    gen_random_uuid(), %s, %s::"ClassificationStatus", %s::"WorkMode", %s, NOW(), NOW()
                 )
                 """,
-                (job_dict["id"], ClassificationStatusEnum.PENDING.value, []),
+                (job_dict["id"], ClassificationStatusEnum.PENDING.value, job.work_mode.value, []),
             )
 
             return job_dict, True
