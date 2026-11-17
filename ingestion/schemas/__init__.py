@@ -65,6 +65,7 @@ class RawJob(BaseModel):
     job_url: str
     location: Optional[str] = None
     posted_at: Optional[datetime] = None
+    source_updated_at: Optional[datetime] = None
     expires_at: Optional[datetime] = None
     company_url: Optional[str] = None
     company_logo: Optional[str] = None
@@ -83,6 +84,7 @@ class NormalizedJob(BaseModel):
     canonical_url: str
     content_hash: str
     posted_at: Optional[datetime] = None
+    source_updated_at: Optional[datetime] = None
     expires_at: Optional[datetime] = None
     status: JobStatusEnum = JobStatusEnum.ACTIVE
     company_url: Optional[str] = None

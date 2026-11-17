@@ -8,6 +8,7 @@ export class JobsService {
 
   /**
    * Returns a paginated, filtered, and sorted list of active, verified Indian jobs.
+   * By default, enforces maximum age of 30 days (excluding stale and unknown-date listings).
    */
   async findAll(query: QueryJobsDto) {
     const {
@@ -18,9 +19,10 @@ export class JobsService {
       experienceLevel,
       workMode,
       skills,
+      dateRange = '30d',
       page = 1,
       limit = 20,
-      sortBy = SortBy.CREATED_AT,
+      sortBy = SortBy.POSTED_AT,
       sortOrder = SortOrder.DESC,
     } = query;
 
@@ -31,6 +33,38 @@ export class JobsService {
       { status: 'ACTIVE' },
       { indiaEligibility: 'VERIFIED_INDIAN' },
     ];
+
+    // ── Date Freshness Filter ──────────────────────────────────────────────────
+    if (dateRange && dateRange !== 'all') {
+      const now = new Date();
+      let cutoff: Date;
+
+      switch (dateRange) {
+        case '24h':
+          cutoff = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+          break;
+        case '3d':
+          cutoff = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000);
+          break;
+        case '7d':
+          cutoff = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+          break;
+        case '14d':
+          cutoff = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
+          break;
+        case '30d':
+        default:
+          cutoff = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+          break;
+      }
+
+      andConditions.push({
+        postedAt: {
+          gte: cutoff,
+          not: null,
+        },
+      });
+    }
 
     if (search) {
       andConditions.push({
@@ -86,25 +120,27 @@ export class JobsService {
 
     const where = { AND: andConditions };
 
-    // ── ORDER BY clause ───────────────────────────────────────────────────────
+    // ── ORDER BY clause: authentic postedAt as canonical primary sort ─────────
     let orderBy: any;
     switch (sortBy) {
       case SortBy.POSTED_AT:
-        orderBy = [{ postedAt: order }, { createdAt: 'desc' }];
+        orderBy = [{ postedAt: { sort: order, nulls: 'last' } }, { id: 'desc' }];
         break;
       case SortBy.TITLE:
-        orderBy = { title: order };
+        orderBy = [{ title: order }, { postedAt: { sort: 'desc', nulls: 'last' } }];
         break;
       case SortBy.COMPANY:
-        orderBy = { company: { name: order } };
+        orderBy = [{ company: { name: order } }, { postedAt: { sort: 'desc', nulls: 'last' } }];
         break;
       case SortBy.CREATED_AT:
+        orderBy = [{ createdAt: order }, { id: 'desc' }];
+        break;
       default:
-        orderBy = { createdAt: order };
+        orderBy = [{ postedAt: { sort: order, nulls: 'last' } }, { id: 'desc' }];
         break;
     }
 
-    // ── SELECT / INCLUDE ──────────────────────────────────────────────────────
+    // ── SELECT / INCLUDE: expose canonical date timestamps ─────────────────────
     const select = {
       id: true,
       title: true,
@@ -114,7 +150,11 @@ export class JobsService {
       countryCode: true,
       jobUrl: true,
       postedAt: true,
+      sourceUpdatedAt: true,
+      firstSeenAt: true,
+      lastSeenAt: true,
       createdAt: true,
+      updatedAt: true,
       status: true,
       company: {
         select: {

@@ -13,7 +13,11 @@ export interface JobListItem {
   indiaEligibility?: string;
   jobUrl: string;
   postedAt?: string;
+  sourceUpdatedAt?: string;
+  firstSeenAt?: string;
+  lastSeenAt?: string;
   createdAt: string;
+  updatedAt?: string;
   status: string;
   company: {
     id: string;
@@ -118,6 +122,7 @@ export interface JobsQueryParams {
   experienceLevel?: string;
   workMode?: string;
   skills?: string;
+  dateRange?: string;
   page?: number;
   limit?: number;
   sortBy?: string;

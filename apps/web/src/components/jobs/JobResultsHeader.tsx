@@ -6,6 +6,8 @@ import FormControl from '@mui/material/FormControl';
 import Select from '@mui/material/Select';
 import MenuItem from '@mui/material/MenuItem';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
+import CalendarMonthOutlinedIcon from '@mui/icons-material/CalendarMonthOutlined';
+import SortIcon from '@mui/icons-material/Sort';
 import type { PaginationMeta } from '../../types/api.types';
 
 interface Props {
@@ -13,15 +15,25 @@ interface Props {
   loading: boolean;
   sortBy: string;
   sortOrder: string;
+  dateRange?: string;
   onSortChange: (sortBy: string, sortOrder: string) => void;
+  onDateRangeChange?: (dateRange: string) => void;
 }
 
 const SORT_OPTIONS = [
-  { label: 'Newest First', sortBy: 'createdAt', sortOrder: 'DESC' },
-  { label: 'Recently Posted', sortBy: 'postedAt', sortOrder: 'DESC' },
-  { label: 'Oldest First', sortBy: 'createdAt', sortOrder: 'ASC' },
+  { label: 'Newest First', sortBy: 'postedAt', sortOrder: 'DESC' },
+  { label: 'Oldest First', sortBy: 'postedAt', sortOrder: 'ASC' },
   { label: 'Company A–Z', sortBy: 'company', sortOrder: 'ASC' },
   { label: 'Job Title A–Z', sortBy: 'title', sortOrder: 'ASC' },
+];
+
+const DATE_RANGE_OPTIONS = [
+  { label: 'Past 30 Days (Fresh)', value: '30d' },
+  { label: 'Past 24 Hours', value: '24h' },
+  { label: 'Past 3 Days', value: '3d' },
+  { label: 'Past 7 Days', value: '7d' },
+  { label: 'Past 14 Days', value: '14d' },
+  { label: 'All Active Opportunities', value: 'all' },
 ];
 
 export default function JobResultsHeader({
@@ -29,7 +41,9 @@ export default function JobResultsHeader({
   loading,
   sortBy,
   sortOrder,
+  dateRange = '30d',
   onSortChange,
+  onDateRangeChange,
 }: Props) {
   const currentVal = `${sortBy}__${sortOrder}`;
 
@@ -81,49 +95,88 @@ export default function JobResultsHeader({
         </Typography>
       </Box>
 
-      {/* Sort Select */}
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-        <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600, display: { xs: 'none', sm: 'inline' } }}>
-          Sort by:
-        </Typography>
-        <FormControl size="small" sx={{ minWidth: 150 }}>
-          <Select
-            value={currentVal}
-            onChange={(e) => {
-              const [sb, so] = (e.target.value as string).split('__');
-              onSortChange(sb, so);
-            }}
-            IconComponent={KeyboardArrowDownIcon}
-            sx={{
-              height: 36,
-              bgcolor: '#ffffff',
-              fontSize: '0.82rem',
-              fontWeight: 500,
-              borderRadius: 2,
-              '& .MuiOutlinedInput-notchedOutline': {
-                borderColor: '#cbd5e1',
-              },
-              '&:hover .MuiOutlinedInput-notchedOutline': {
-                borderColor: '#94a3b8',
-              },
-              '& .MuiSelect-select': {
-                py: 0.75,
-                px: 1.25,
-                pr: '28px !important',
-              },
-            }}
-          >
-            {SORT_OPTIONS.map((opt) => (
-              <MenuItem
-                key={`${opt.sortBy}__${opt.sortOrder}`}
-                value={`${opt.sortBy}__${opt.sortOrder}`}
-                sx={{ fontSize: '0.82rem' }}
+      {/* Controls: Date Range + Sort Select */}
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
+        {/* Freshness / Date Range Select */}
+        {onDateRangeChange && (
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+            <CalendarMonthOutlinedIcon sx={{ fontSize: 16, color: 'text.secondary', display: { xs: 'none', sm: 'block' } }} />
+            <FormControl size="small" sx={{ minWidth: 160 }}>
+              <Select
+                value={dateRange}
+                onChange={(e) => onDateRangeChange(e.target.value as string)}
+                IconComponent={KeyboardArrowDownIcon}
+                sx={{
+                  height: 36,
+                  bgcolor: '#ffffff',
+                  fontSize: '0.82rem',
+                  fontWeight: 500,
+                  borderRadius: 2,
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: '#cbd5e1',
+                  },
+                  '&:hover .MuiOutlinedInput-notchedOutline': {
+                    borderColor: '#94a3b8',
+                  },
+                  '& .MuiSelect-select': {
+                    py: 0.75,
+                    px: 1.25,
+                    pr: '28px !important',
+                  },
+                }}
               >
-                {opt.label}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
+                {DATE_RANGE_OPTIONS.map((opt) => (
+                  <MenuItem key={opt.value} value={opt.value} sx={{ fontSize: '0.82rem' }}>
+                    {opt.label}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Box>
+        )}
+
+        {/* Sort Select */}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+          <SortIcon sx={{ fontSize: 16, color: 'text.secondary', display: { xs: 'none', sm: 'block' } }} />
+          <FormControl size="small" sx={{ minWidth: 140 }}>
+            <Select
+              value={currentVal}
+              onChange={(e) => {
+                const [sb, so] = (e.target.value as string).split('__');
+                onSortChange(sb, so);
+              }}
+              IconComponent={KeyboardArrowDownIcon}
+              sx={{
+                height: 36,
+                bgcolor: '#ffffff',
+                fontSize: '0.82rem',
+                fontWeight: 500,
+                borderRadius: 2,
+                '& .MuiOutlinedInput-notchedOutline': {
+                  borderColor: '#cbd5e1',
+                },
+                '&:hover .MuiOutlinedInput-notchedOutline': {
+                  borderColor: '#94a3b8',
+                },
+                '& .MuiSelect-select': {
+                  py: 0.75,
+                  px: 1.25,
+                  pr: '28px !important',
+                },
+              }}
+            >
+              {SORT_OPTIONS.map((opt) => (
+                <MenuItem
+                  key={`${opt.sortBy}__${opt.sortOrder}`}
+                  value={`${opt.sortBy}__${opt.sortOrder}`}
+                  sx={{ fontSize: '0.82rem' }}
+                >
+                  {opt.label}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </Box>
       </Box>
     </Box>
   );

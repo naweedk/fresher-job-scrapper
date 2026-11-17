@@ -14,8 +14,9 @@ import type { JobsQueryParams } from '../types/api.types';
 const DEFAULT_PARAMS: JobsQueryParams = {
   page: 1,
   limit: 20,
-  sortBy: 'createdAt',
-  sortOrder: 'DESC',
+  sortBy: 'postedAt',
+  sortOrder: 'desc',
+  dateRange: '30d',
 };
 
 export default function HomePage() {
@@ -43,7 +44,15 @@ export default function HomePage() {
     setParams((prev) => ({
       ...prev,
       sortBy,
-      sortOrder: sortOrder as 'ASC' | 'DESC',
+      sortOrder,
+      page: 1,
+    }));
+  }, []);
+
+  const handleDateRangeChange = useCallback((dateRange: string) => {
+    setParams((prev) => ({
+      ...prev,
+      dateRange,
       page: 1,
     }));
   }, []);
@@ -63,13 +72,15 @@ export default function HomePage() {
       {/* 3. Main Discovery Workspace */}
       <Box component="main" sx={{ flex: 1, py: { xs: 2.5, md: 3.5 } }}>
         <Container maxWidth="xl">
-          {/* Results Header (Count + Sort) */}
+          {/* Results Header (Count + Date Range + Sort) */}
           <JobResultsHeader
             pagination={pagination}
             loading={loading}
-            sortBy={params.sortBy ?? 'createdAt'}
-            sortOrder={params.sortOrder ?? 'DESC'}
+            sortBy={params.sortBy ?? 'postedAt'}
+            sortOrder={params.sortOrder ?? 'desc'}
+            dateRange={params.dateRange ?? '30d'}
             onSortChange={handleSortChange}
+            onDateRangeChange={handleDateRangeChange}
           />
 
           {/* Job Cards Grid with Skeleton Loader */}

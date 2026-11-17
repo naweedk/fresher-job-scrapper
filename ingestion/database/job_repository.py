@@ -75,16 +75,19 @@ class JobRepository:
 
         with self.conn.cursor() as cur:
             if existing:
-                # Update status/timestamps if appropriate
+                # Update status and lastSeenAt, preserve original postedAt and firstSeenAt
                 job_id = existing["id"]
                 cur.execute(
                     """
                     UPDATE jobs
-                    SET status = %s::"JobStatus", "updatedAt" = NOW()
+                    SET status = %s::"JobStatus",
+                        "lastSeenAt" = NOW(),
+                        "sourceUpdatedAt" = COALESCE(%s, "sourceUpdatedAt"),
+                        "updatedAt" = NOW()
                     WHERE id = %s
                     RETURNING *
                     """,
-                    (JobStatusEnum.ACTIVE.value, job_id),
+                    (JobStatusEnum.ACTIVE.value, job.source_updated_at, job_id),
                 )
                 updated = cur.fetchone()
                 return dict(updated or existing), False
@@ -96,14 +99,16 @@ class JobRepository:
                     id, "companyId", "sourceId", "externalId", title,
                     description, location, "jobUrl", "canonicalUrl",
                     "contentHash", "countryCode", "workMode", "indiaEligibility",
-                    "remoteEligibilityScope", "postedAt", "expiresAt", status,
+                    "remoteEligibilityScope", "postedAt", "sourceUpdatedAt",
+                    "firstSeenAt", "lastSeenAt", "expiresAt", status,
                     "createdAt", "updatedAt"
                 )
                 VALUES (
                     gen_random_uuid(), %s, %s, %s, %s,
                     %s, %s, %s, %s,
                     %s, %s, %s::"WorkMode", %s::"IndiaEligibility",
-                    %s, %s, %s, %s::"JobStatus",
+                    %s, %s, %s,
+                    NOW(), NOW(), %s, %s::"JobStatus",
                     NOW(), NOW()
                 )
                 RETURNING *
@@ -123,6 +128,7 @@ class JobRepository:
                     job.india_eligibility.value,
                     job.remote_eligibility_scope,
                     job.posted_at,
+                    job.source_updated_at,
                     job.expires_at,
                     job.status.value,
                 ),

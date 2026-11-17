@@ -116,6 +116,9 @@ model Job {
   indiaEligibility       IndiaEligibility  @default(AMBIGUOUS)
   remoteEligibilityScope String?
   postedAt     DateTime?
+  sourceUpdatedAt DateTime?
+  firstSeenAt  DateTime  @default(now())
+  lastSeenAt   DateTime  @default(now())
   expiresAt    DateTime?
   status       JobStatus @default(ACTIVE)
   createdAt    DateTime  @default(now())
@@ -133,6 +136,8 @@ model Job {
   @@index([workMode])
   @@index([countryCode])
   @@index([postedAt])
+  @@index([firstSeenAt])
+  @@index([lastSeenAt])
   @@index([companyId])
   @@index([sourceId])
   // ── Uniqueness ───────────────────────────────

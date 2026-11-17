@@ -62,14 +62,25 @@ class SimplifyJobsCollector(BaseCollector):
                     locations = item.get("locations", [])
                     loc_str = ", ".join(locations) if locations else "Remote"
 
-                    # Parse posted date
+                    # Parse posted date and updated date
                     posted_at = None
-                    epoch = item.get("date_posted") or item.get("date_updated")
-                    if epoch:
+                    source_updated_at = None
+                    posted_epoch = item.get("date_posted")
+                    updated_epoch = item.get("date_updated")
+
+                    if posted_epoch:
                         try:
-                            posted_at = datetime.fromtimestamp(int(epoch), tz=timezone.utc)
+                            posted_at = datetime.fromtimestamp(int(posted_epoch), tz=timezone.utc)
                         except Exception:
                             pass
+                    if updated_epoch:
+                        try:
+                            source_updated_at = datetime.fromtimestamp(int(updated_epoch), tz=timezone.utc)
+                        except Exception:
+                            pass
+
+                    if not posted_at and source_updated_at:
+                        posted_at = source_updated_at
 
                     role_title = item.get("title", "")
                     company = item.get("company_name", "")
@@ -100,6 +111,7 @@ class SimplifyJobsCollector(BaseCollector):
                         job_url=job_url,
                         location=loc_str,
                         posted_at=posted_at,
+                        source_updated_at=source_updated_at,
                         company_url=item.get("company_url"),
                         tags=[category, label],
                     )

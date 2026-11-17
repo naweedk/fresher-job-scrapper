@@ -249,33 +249,66 @@ describe('JobsService', () => {
       );
     });
 
-    it('sorts by title ascending', async () => {
+    it('sorts by title ascending with postedAt tiebreaker', async () => {
       const dto = Object.assign(new QueryJobsDto(), { sortBy: SortBy.TITLE, sortOrder: SortOrder.ASC });
       await service.findAll(dto);
 
       expect(prisma.job.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({ orderBy: { title: 'asc' } }),
+        expect.objectContaining({
+          orderBy: [{ title: 'asc' }, { postedAt: { sort: 'desc', nulls: 'last' } }],
+        }),
       );
     });
 
-    it('sorts by company name', async () => {
+    it('sorts by company name with postedAt tiebreaker', async () => {
       const dto = Object.assign(new QueryJobsDto(), { sortBy: SortBy.COMPANY, sortOrder: SortOrder.ASC });
       await service.findAll(dto);
 
       expect(prisma.job.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({ orderBy: { company: { name: 'asc' } } }),
+        expect.objectContaining({
+          orderBy: [{ company: { name: 'asc' } }, { postedAt: { sort: 'desc', nulls: 'last' } }],
+        }),
       );
     });
 
-    it('sorts by postedAt with createdAt fallback', async () => {
+    it('sorts strictly by postedAt descending by default or request', async () => {
       const dto = Object.assign(new QueryJobsDto(), { sortBy: SortBy.POSTED_AT, sortOrder: SortOrder.DESC });
       await service.findAll(dto);
 
       expect(prisma.job.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          orderBy: [{ postedAt: 'desc' }, { createdAt: 'desc' }],
+          orderBy: [{ postedAt: { sort: 'desc', nulls: 'last' } }, { id: 'desc' }],
         }),
       );
+    });
+
+    it('applies default 30-day freshness filter excluding stale or null postedAt', async () => {
+      await service.findAll(new QueryJobsDto());
+
+      expect(prisma.job.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            AND: expect.arrayContaining([
+              expect.objectContaining({
+                postedAt: expect.objectContaining({
+                  gte: expect.any(Date),
+                  not: null,
+                }),
+              }),
+            ]),
+          }),
+        }),
+      );
+    });
+
+    it('supports dateRange=all allowing older jobs without postedAt cutoff', async () => {
+      const dto = Object.assign(new QueryJobsDto(), { dateRange: 'all' as any });
+      await service.findAll(dto);
+
+      const callArgs = prisma.job.findMany.mock.calls[prisma.job.findMany.mock.calls.length - 1][0];
+      const andConditions = callArgs.where.AND;
+      const hasDateFilter = andConditions.some((c: any) => c.postedAt && c.postedAt.gte);
+      expect(hasDateFilter).toBe(false);
     });
 
     it('calculates hasNextPage=true when more pages exist', async () => {

@@ -144,7 +144,7 @@ export default function Header() {
 
           {/* Right: Status indicator & Mobile Toggle */}
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-            <Chip
+            {/* <Chip
               icon={<VerifiedIcon sx={{ fontSize: '13px !important', color: '#059669 !important' }} />}
               label="Verified Indian Jobs"
               size="small"
@@ -156,7 +156,7 @@ export default function Header() {
                 border: '1px solid #a7f3d0',
                 display: { xs: 'none', sm: 'inline-flex' },
               }}
-            />
+            /> */}
 
             {/* Mobile Hamburger */}
             <IconButton

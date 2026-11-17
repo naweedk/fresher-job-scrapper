@@ -1,7 +1,7 @@
 """
-Lever Public Postings Collector for Verified Indian Openings.
-Queries official Lever Postings REST APIs (https://api.lever.co/v0/postings/{company}?mode=json)
-for companies hiring in Indian tech hubs.
+Lever Public Job Board API Collector.
+Scrapes direct job postings from companies hiring in India using Lever ATS.
+Extracts official epoch createdAt timestamps, parses location, and structures candidate roles.
 """
 
 import logging
@@ -15,6 +15,7 @@ from schemas import RawJob
 logger = logging.getLogger(__name__)
 
 DEFAULT_LEVER_COMPANIES = [
+    "paytm",
     "meesho",
     "cred",
     "zeta",
@@ -26,6 +27,13 @@ DEFAULT_LEVER_COMPANIES = [
     "yubi",
     "clevertap",
     "urbancompany",
+    "invideo",
+    "simpl",
+    "jupiter",
+    "khatabook",
+    "leadsq",
+    "curefit",
+    "glance",
 ]
 
 
@@ -76,13 +84,13 @@ class LeverCollector(BaseCollector):
                         desc_plain = item.get("descriptionPlain") or item.get("description") or ""
                         description = f"{title} at {company_name} ({location}). Team: {team}. Type: {commitment}. {desc_plain}"
 
-                        posted_at = None
+                        posted_at: Optional[datetime] = None
                         epoch = item.get("createdAt")
                         if epoch:
                             try:
                                 posted_at = datetime.fromtimestamp(epoch / 1000.0, tz=timezone.utc)
                             except Exception:
-                                pass
+                                posted_at = None
 
                         raw_job = RawJob(
                             source_name=self.name,
@@ -92,7 +100,7 @@ class LeverCollector(BaseCollector):
                             description=description,
                             job_url=job_url,
                             location=location,
-                            posted_at=posted_at or datetime.now(timezone.utc),
+                            posted_at=posted_at,
                             tags=["Lever", company_name, team, commitment],
                         )
                         raw_jobs.append(raw_job)

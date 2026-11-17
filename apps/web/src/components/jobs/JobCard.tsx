@@ -16,21 +16,7 @@ import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { JobListItem } from '../../types/api.types';
-
-function formatDate(dateStr?: string): string {
-  if (!dateStr) return '';
-  const d = new Date(dateStr);
-  const now = new Date();
-  const diffDays = Math.floor((now.getTime() - d.getTime()) / 86_400_000);
-  if (diffDays <= 0) return 'Today';
-  if (diffDays === 1) return 'Yesterday';
-  if (diffDays < 7) return `${diffDays}d ago`;
-  if (diffDays < 30) return `${Math.floor(diffDays / 7)}w ago`;
-  return d.toLocaleDateString('en-IN', {
-    day: 'numeric',
-    month: 'short',
-  });
-}
+import { formatRelativePostingDate } from '../../utils/date';
 
 function getWorkModeBadge(mode?: string) {
   const m = (mode || '').toUpperCase();
@@ -97,7 +83,7 @@ export default function JobCard({ job }: Props) {
   const jobTypeBadge = getJobTypeBadge(classification?.jobType);
   const expBadge = getExpBadge(classification?.experienceLevel);
   const skills = classification?.skills ?? [];
-  const postedText = formatDate(job.postedAt || job.createdAt);
+  const postedText = formatRelativePostingDate(job.postedAt);
 
   const handleCardClick = (e: React.MouseEvent) => {
     // Avoid navigation if clicked inside button or anchor

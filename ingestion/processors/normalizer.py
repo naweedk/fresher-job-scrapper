@@ -106,6 +106,10 @@ def normalize_job(raw: RawJob, source_id: str) -> NormalizedJob:
     if posted_at and posted_at.tzinfo is None:
         posted_at = posted_at.replace(tzinfo=timezone.utc)
 
+    source_updated_at = raw.source_updated_at
+    if source_updated_at and source_updated_at.tzinfo is None:
+        source_updated_at = source_updated_at.replace(tzinfo=timezone.utc)
+
     # Evaluate India location and work-mode eligibility
     india_res = evaluate_india_eligibility(
         location=clean_loc,
@@ -126,6 +130,7 @@ def normalize_job(raw: RawJob, source_id: str) -> NormalizedJob:
         canonical_url=canonical,
         content_hash=content_hash,
         posted_at=posted_at,
+        source_updated_at=source_updated_at,
         expires_at=raw.expires_at,
         company_url=raw.company_url,
         company_logo=raw.company_logo,

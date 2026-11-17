@@ -72,7 +72,7 @@ class JobicyCollector(BaseCollector):
                     description=item.get("jobDescription", "") or item.get("jobExcerpt", ""),
                     job_url=item.get("url", ""),
                     location=item.get("jobGeo", "Remote"),
-                    posted_at=posted_at or datetime.now(timezone.utc),
+                    posted_at=posted_at,
                     company_logo=item.get("companyLogo"),
                     tags=tags,
                 )

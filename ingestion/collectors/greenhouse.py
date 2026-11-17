@@ -1,7 +1,7 @@
 """
-Greenhouse Public Career Boards Collector for Verified Indian Openings.
-Queries official Greenhouse job board REST APIs (https://boards-api.greenhouse.io/v1/boards/{company}/jobs?content=true)
-for prominent multinational and Indian tech enterprises hiring in Indian tech hubs.
+Greenhouse Public Job Board API Collector.
+Scrapes direct official job openings from verified companies with Indian offices using Greenhouse ATS.
+Respects rate limits, preserves official publication timestamps, and extracts verified metadata.
 """
 
 import logging
@@ -14,32 +14,41 @@ from schemas import RawJob
 
 logger = logging.getLogger(__name__)
 
-# Established companies with major development centers and offices in India on Greenhouse
+# Established companies with active development centers and offices in India on Greenhouse
 DEFAULT_GREENHOUSE_COMPANIES = [
     "inmobi",
     "thoughtworks",
+    "groww",
+    "rubrik",
     "databricks",
-    "okta",
     "mongodb",
     "zscaler",
-    "rubrik",
-    "purestorage",
-    "highradius",
-    "stripe",
-    "gitlab",
-    "fivetran",
-    "elastic",
-    "druva",
-    "airbnb",
     "twilio",
+    "stripe",
+    "okta",
+    "fivetran",
+    "druva",
+    "purestorage",
     "coinbase",
-    "groww",
-    "starburst",
     "samsara",
+    "elastic",
+    "gitlab",
+    "highradius",
+    "slice",
+    "cockroachlabs",
+    "airbnb",
+    "figma",
     "mixpanel",
     "launchdarkly",
-    "figma",
-    "cockroachlabs",
+    "starburst",
+    "cloudflare",
+    "datadog",
+    "snowflake",
+    "hashicorp",
+    "airmeet",
+    "urbancompany",
+    "mpl",
+    "dream11",
 ]
 
 
@@ -51,7 +60,7 @@ class GreenhouseCollector(BaseCollector):
             name="Greenhouse",
             base_url="https://boards-api.greenhouse.io/v1/boards",
             timeout=25.0,
-            rate_limit_delay=0.4,
+            rate_limit_delay=0.3,
         )
         self.companies = companies or DEFAULT_GREENHOUSE_COMPANIES
 
@@ -85,16 +94,33 @@ class GreenhouseCollector(BaseCollector):
                         ext_id = f"gh-{company_slug}-{item.get('id', job_url)}"
                         content = item.get("content") or f"{title} at {company_name} in {loc_name}"
 
-                        # Parse updated_at
-                        posted_at = None
-                        up_str = item.get("updated_at")
-                        if up_str:
+                        # Parse genuine publication date and update date
+                        posted_at: Optional[datetime] = None
+                        source_updated_at: Optional[datetime] = None
+
+                        # 1. Prefer official first_published date
+                        pub_str = item.get("first_published")
+                        if pub_str:
                             try:
-                                posted_at = datetime.fromisoformat(up_str.replace("Z", "+00:00"))
+                                posted_at = datetime.fromisoformat(pub_str.replace("Z", "+00:00"))
                                 if posted_at.tzinfo is None:
                                     posted_at = posted_at.replace(tzinfo=timezone.utc)
                             except Exception:
-                                pass
+                                posted_at = None
+
+                        # 2. Parse source updated_at
+                        up_str = item.get("updated_at")
+                        if up_str:
+                            try:
+                                source_updated_at = datetime.fromisoformat(up_str.replace("Z", "+00:00"))
+                                if source_updated_at.tzinfo is None:
+                                    source_updated_at = source_updated_at.replace(tzinfo=timezone.utc)
+                            except Exception:
+                                source_updated_at = None
+
+                        # If first_published was missing, fall back to updated_at, but NEVER now()
+                        if not posted_at and source_updated_at:
+                            posted_at = source_updated_at
 
                         raw_job = RawJob(
                             source_name=self.name,
@@ -104,7 +130,8 @@ class GreenhouseCollector(BaseCollector):
                             description=content,
                             job_url=job_url,
                             location=loc_name,
-                            posted_at=posted_at or datetime.now(timezone.utc),
+                            posted_at=posted_at,
+                            source_updated_at=source_updated_at,
                             tags=["Greenhouse", company_name],
                         )
                         raw_jobs.append(raw_job)
@@ -115,7 +142,7 @@ class GreenhouseCollector(BaseCollector):
                     logger.warning("Error fetching Greenhouse board '%s': %s", company_slug, comp_err)
 
         except Exception as e:
-            logger.error("Greenhouse collector encountered top-level error: %s", e)
+            logger.error("Greenhouse collector encountered error: %s", e)
         finally:
             client.close()
 

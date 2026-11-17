@@ -54,14 +54,7 @@ function InfoRow({
   );
 }
 
-function formatDate(dateStr?: string): string {
-  if (!dateStr) return 'Recently listed';
-  return new Date(dateStr).toLocaleDateString('en-IN', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  });
-}
+import { formatFullDate, formatRelativePostingDate } from '../../../utils/date';
 
 function getCompanyInitials(name: string): string {
   if (!name) return 'FJ';
@@ -308,7 +301,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, color: '#64748b' }}>
                         <ScheduleIcon sx={{ fontSize: 15 }} />
                         <Typography variant="body2" sx={{ fontWeight: 500, color: '#64748b' }}>
-                          Posted {formatDate(job.postedAt ?? job.createdAt)}
+                          {formatRelativePostingDate(job.postedAt, { includePrefix: true }) ?? (job.postedAt ? `Posted ${formatFullDate(job.postedAt)}` : 'Posting date unavailable')}
                         </Typography>
                       </Box>
                     </Box>
@@ -599,9 +592,25 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
 
                       <InfoRow
                         icon={<ScheduleIcon fontSize="small" />}
-                        label="Date Listed"
-                        value={formatDate(job.postedAt ?? job.createdAt)}
+                        label="Original Posting Date"
+                        value={job.postedAt ? `${formatFullDate(job.postedAt)} (${formatRelativePostingDate(job.postedAt)})` : 'Posting date unavailable'}
                       />
+
+                      {job.sourceUpdatedAt && (
+                        <InfoRow
+                          icon={<ScheduleIcon fontSize="small" />}
+                          label="Source Last Updated"
+                          value={formatFullDate(job.sourceUpdatedAt)}
+                        />
+                      )}
+
+                      {job.firstSeenAt && (
+                        <InfoRow
+                          icon={<ScheduleIcon fontSize="small" />}
+                          label="First Discovered"
+                          value={formatFullDate(job.firstSeenAt)}
+                        />
+                      )}
 
                       {job.source && (
                         <InfoRow

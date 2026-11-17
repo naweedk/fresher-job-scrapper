@@ -15,6 +15,7 @@ from database.job_repository import JobRepository
 from database.source_repository import SourceRepository
 from processors.ai_classifier import GeminiClassifier
 from processors.eligibility import check_fresher_eligibility
+from processors.freshness import evaluate_job_freshness, FreshnessStatus
 from processors.normalizer import normalize_job
 from processors.validators import validate_raw_job
 from schemas import ClassificationStatusEnum, IndiaEligibilityEnum, RawJob, SourceTypeEnum
@@ -46,6 +47,13 @@ class IngestionPipeline:
             "duplicates_found": 0,
             "new_jobs_inserted": 0,
             "verified_indian_inserted": 0,
+            "posted_within_24h": 0,
+            "posted_within_3d": 0,
+            "posted_within_7d": 0,
+            "posted_within_14d": 0,
+            "posted_within_30d": 0,
+            "posted_stale": 0,
+            "posted_unknown": 0,
             "existing_jobs_updated": 0,
             "expired_jobs_marked": 0,
             "jobs_classified_successfully": 0,
@@ -154,6 +162,25 @@ class IngestionPipeline:
                                 if normalized.india_eligibility == IndiaEligibilityEnum.VERIFIED_INDIAN:
                                     source_stats["verified_indian"] += 1
                                     pipeline_summary["verified_indian_inserted"] += 1
+
+                                    # Track freshness
+                                    fresh_status = evaluate_job_freshness(normalized.posted_at)
+                                    if fresh_status == FreshnessStatus.UNKNOWN:
+                                        pipeline_summary["posted_unknown"] += 1
+                                    elif fresh_status == FreshnessStatus.STALE:
+                                        pipeline_summary["posted_stale"] += 1
+                                    elif fresh_status in (FreshnessStatus.FRESH, FreshnessStatus.RECENT):
+                                        pipeline_summary["posted_within_30d"] += 1
+                                        if normalized.posted_at:
+                                            age_days = (time.time() - normalized.posted_at.timestamp()) / 86400.0
+                                            if age_days <= 1.0:
+                                                pipeline_summary["posted_within_24h"] += 1
+                                            if age_days <= 3.0:
+                                                pipeline_summary["posted_within_3d"] += 1
+                                            if age_days <= 7.0:
+                                                pipeline_summary["posted_within_7d"] += 1
+                                            if age_days <= 14.0:
+                                                pipeline_summary["posted_within_14d"] += 1
                             else:
                                 duplicate_count += 1
                                 pipeline_summary["duplicates_found"] += 1

@@ -43,6 +43,11 @@ export class QueryJobsDto {
   @IsString()
   skills?: string;
 
+  /** Configurable date freshness filter: '24h' | '3d' | '7d' | '14d' | '30d' | 'all' */
+  @IsOptional()
+  @IsEnum(['24h', '3d', '7d', '14d', '30d', 'all'])
+  dateRange?: '24h' | '3d' | '7d' | '14d' | '30d' | 'all' = '30d';
+
   @IsOptional()
   @Type(() => Number)
   @IsInt()
@@ -58,7 +63,7 @@ export class QueryJobsDto {
 
   @IsOptional()
   @IsEnum(SortBy)
-  sortBy?: SortBy = SortBy.CREATED_AT;
+  sortBy?: SortBy = SortBy.POSTED_AT;
 
   @IsOptional()
   @IsEnum(SortOrder)
