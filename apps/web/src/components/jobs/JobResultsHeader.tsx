@@ -45,7 +45,8 @@ export default function JobResultsHeader({
   onSortChange,
   onDateRangeChange,
 }: Props) {
-  const currentVal = `${sortBy}__${sortOrder}`;
+  const normalizedSortOrder = (sortOrder || 'DESC').toUpperCase();
+  const currentVal = `${sortBy}__${normalizedSortOrder}`;
 
   const renderCountText = () => {
     if (loading) return 'Searching verified opportunities...';

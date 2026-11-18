@@ -15,7 +15,7 @@ const DEFAULT_PARAMS: JobsQueryParams = {
   page: 1,
   limit: 20,
   sortBy: 'postedAt',
-  sortOrder: 'desc',
+  sortOrder: 'DESC',
   dateRange: '30d',
 };
 
